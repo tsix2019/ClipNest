@@ -48,6 +48,9 @@ public sealed partial class HotkeyBox : Button
         UpdateText();
     }
 
+    /// <summary>Ends recording without changing the gesture (window closed or deactivated).</summary>
+    public void CancelRecording() => StopRecording();
+
     private void StopRecording()
     {
         if (!_recording) return;
@@ -80,11 +83,11 @@ public sealed partial class HotkeyBox : Button
         if (IsDown(VirtualKey.LeftWindows) || IsDown(VirtualKey.RightWindows)) mods |= HotkeyModifiers.Win;
 
         var gesture = new HotkeyGesture(mods, (int)e.Key);
-        if (!gesture.IsValid) return; // a modifier is required
+        if (!gesture.IsSafeGlobal) return; // needs Ctrl/Alt/Win and must not be Alt+F4 etc.; keep listening
 
         _gesture = gesture;
+        GestureChanged?.Invoke(this, gesture); // before StopRecording, so re-registration uses the new gesture
         StopRecording();
-        GestureChanged?.Invoke(this, gesture);
     }
 
     private static bool IsDown(VirtualKey key) =>

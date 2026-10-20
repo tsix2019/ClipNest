@@ -17,6 +17,7 @@ public static class ThemeManager
 
     private static readonly List<Window> Windows = [];
     private static readonly UISettings UiSettings = new();
+    private static readonly AccessibilitySettings Accessibility = new();
     private static Microsoft.UI.Dispatching.DispatcherQueue? _ui;
 
     public static string Mode { get; private set; } = System;
@@ -43,10 +44,9 @@ public static class ThemeManager
         Mode = Normalize(mode);
         _ui = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         // Windows light/dark switch while following the system.
-        UiSettings.ColorValuesChanged += (_, _) => _ui?.TryEnqueue(() =>
-        {
-            if (Mode == System) Changed?.Invoke();
-        });
+        // Fires for Windows light/dark and high-contrast switches. (AccessibilitySettings.HighContrastChanged
+        // cannot be subscribed to from a desktop app: it needs a CoreWindow.)
+        UiSettings.ColorValuesChanged += (_, _) => _ui?.TryEnqueue(() => Changed?.Invoke());
     }
 
     public static string Normalize(string? mode) => mode is Light or Dark ? mode : System;
@@ -83,6 +83,18 @@ public static class ThemeManager
         }
     }
 
+    private static bool IsHighContrast()
+    {
+        try
+        {
+            return Accessibility.HighContrast;
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
     private static bool SystemIsDark()
     {
         var bg = UiSettings.GetColorValue(UIColorType.Background);
@@ -95,7 +107,8 @@ public static class ThemeManager
     /// </summary>
     public static Brush Brush(string key)
     {
-        var themeKey = IsDark ? "Dark" : "Light";
+        // High contrast overrides light/dark, as it does for {ThemeResource} in XAML.
+        var themeKey = IsHighContrast() ? "HighContrast" : IsDark ? "Dark" : "Light";
         if (Find(Application.Current.Resources, key, themeKey) is Brush b) return b;
         return (Brush)Application.Current.Resources[key];
     }

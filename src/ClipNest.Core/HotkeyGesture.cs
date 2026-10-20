@@ -27,6 +27,20 @@ public readonly record struct HotkeyGesture(HotkeyModifiers Modifiers, int Key)
 
     public bool IsValid => Modifiers != HotkeyModifiers.None && Key != 0;
 
+    /// <summary>
+    /// Safe to register system-wide: needs Ctrl, Alt or Win (Shift alone would swallow typing, e.g. Shift+A),
+    /// and must not hijack window-management shortcuts.
+    /// </summary>
+    public bool IsSafeGlobal
+    {
+        get
+        {
+            if (!IsValid || (Modifiers & (HotkeyModifiers.Ctrl | HotkeyModifiers.Alt | HotkeyModifiers.Win)) == 0) return false;
+            var altOnly = (Modifiers & ~HotkeyModifiers.Shift) == HotkeyModifiers.Alt;
+            return !(altOnly && Key is 0x73 or 0x09 or 0x1B or 0x20); // Alt+F4, Alt+Tab, Alt+Esc, Alt+Space
+        }
+    }
+
     public static bool TryParse(string? text, out HotkeyGesture gesture)
     {
         gesture = default;

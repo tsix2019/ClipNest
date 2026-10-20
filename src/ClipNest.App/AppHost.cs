@@ -26,6 +26,8 @@ public sealed class AppHost : IDisposable
     private readonly Dictionary<string, AppInfoView> _appViews = new(StringComparer.OrdinalIgnoreCase);
     private DispatcherQueueTimer? _maintenanceTimer;
     private DispatcherQueueTimer? _resumeTimer;
+    private DispatcherQueueTimer? _backfillTimer;
+    private DispatcherQueueTimer? _startupTrimTimer;
     private nint _trayIcon;
     private SettingsWindow? _settingsWindow;
 
@@ -129,19 +131,25 @@ public sealed class AppHost : IDisposable
         _maintenanceTimer.Start();
 
         // OCR older images once things have settled.
-        var backfill = UI.CreateTimer();
+        // Timers are kept in fields: an unreferenced DispatcherQueueTimer can be collected before it fires.
+        _backfillTimer = UI.CreateTimer();
+        var backfill = _backfillTimer;
         backfill.Interval = TimeSpan.FromSeconds(20);
         backfill.IsRepeating = false;
         backfill.Tick += (_, _) => Enricher.Backfill();
         backfill.Start();
 
         // Startup touched a lot of code once; give those pages back while we sit in the tray.
-        var trim = UI.CreateTimer();
+        _startupTrimTimer = UI.CreateTimer();
+        var trim = _startupTrimTimer;
         trim.Interval = TimeSpan.FromSeconds(25);
         trim.IsRepeating = false;
         trim.Tick += (_, _) =>
         {
-            if (!Panel.IsShown) MemoryTrimmer.Trim();
+            if (Panel.IsShown) return;
+            MemoryTrimmer.Trim();
+            using var p = System.Diagnostics.Process.GetCurrentProcess();
+            Log.Info($"Startup trim: workingSet={p.WorkingSet64 / 1048576} MB private={p.PrivateMemorySize64 / 1048576} MB");
         };
         trim.Start();
 

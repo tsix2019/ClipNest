@@ -58,7 +58,7 @@ internal static class DevTools
             Platform.MemoryTrimmer.Trim();
             await Task.Delay(1500);
             File.WriteAllText(Path.Combine(outDir, "done.txt"),
-                $"ok {DateTime.Now:O}\nwith windows: {withWindows}\nhidden + trimmed: {MemoryLine()}\n" +
+                $"ok {DateTime.Now:O}\nidle after start: {idleStart}\nwith windows: {withWindows}\nhidden + trimmed: {MemoryLine()}\n" +
                 $"native aot: {!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported}\n");
         }
         catch (Exception e)

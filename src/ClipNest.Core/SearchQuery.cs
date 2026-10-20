@@ -27,6 +27,9 @@ public sealed record SearchQuery(
         ["color"] = ClipKind.Color, ["颜色"] = ClipKind.Color,
     };
 
+    /// <summary>Encodes a filter value for the text form (spaces become "_").</summary>
+    public static string EncodeValue(string value) => value.Trim().Replace(' ', '_');
+
     public static SearchQuery Parse(string input, DateTimeOffset now)
     {
         ClipKind? kind = null;
@@ -46,11 +49,12 @@ public sealed record SearchQuery(
                     case "type" when KindAliases.TryGetValue(value, out var k):
                         kind = k;
                         continue;
+                    // Values cannot contain spaces in the text form: "_" stands for a space ("app:Microsoft_Edge").
                     case "app":
-                        app = value;
+                        app = value.Replace('_', ' ');
                         continue;
                     case "pin":
-                        pin = value;
+                        pin = value.Replace('_', ' ');
                         continue;
                     case "date" when TryParseDate(value, now, out var s, out var u):
                         since = s;

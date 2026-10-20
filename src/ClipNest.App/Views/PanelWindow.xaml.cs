@@ -254,6 +254,8 @@ public sealed partial class PanelWindow : Window
         CardList.SelectedIndex = 0;
         CardList.ScrollIntoView(ViewModel.Items[0]);
         _scroller?.ChangeView(0, null, null, disableAnimation: true);
+        // e.g. after clicking a tab: keep keyboard focus on the cards, not on the clicked button.
+        if (_shown && !SearchFocused) FocusSelectedCard();
     }
 
     private void FocusSelectedCard()
@@ -356,6 +358,9 @@ public sealed partial class PanelWindow : Window
         var shift = IsDown(VirtualKey.Shift);
         var inSearch = SearchFocused;
 
+        // A focused button (tab, filter, settings) handles its own Enter/Space.
+        if (e.OriginalSource is Microsoft.UI.Xaml.Controls.Primitives.ButtonBase && e.Key is VirtualKey.Enter or VirtualKey.Space) return;
+
         switch (e.Key)
         {
             case VirtualKey.Control:
@@ -384,7 +389,7 @@ public sealed partial class PanelWindow : Window
                 e.Handled = true;
                 return;
 
-            case VirtualKey.Left or VirtualKey.Right when ctrl:
+            case VirtualKey.Left or VirtualKey.Right when ctrl && (!inSearch || SearchBox.Text.Length == 0):
                 ViewModel.SelectAdjacentTab(e.Key == VirtualKey.Left ? -1 : 1);
                 e.Handled = true;
                 return;
@@ -475,6 +480,12 @@ public sealed partial class PanelWindow : Window
         if (SearchFocused || char.IsControl(e.Character) || char.IsWhiteSpace(e.Character)) return;
         if (IsDown(VirtualKey.Control) || IsDown(VirtualKey.Menu)) return;
         SearchBox.Focus(FocusState.Programmatic);
+        e.Handled = true;
+        // With a CJK IME the raw letter would cut the composition short ("n" + "ihao"): just focus the box
+        // and let the user type into it.
+        var ime = Windows.Globalization.Language.CurrentInputMethodLanguageTag;
+        if (ime.StartsWith("zh", StringComparison.OrdinalIgnoreCase) || ime.StartsWith("ja", StringComparison.OrdinalIgnoreCase) || ime.StartsWith("ko", StringComparison.OrdinalIgnoreCase))
+            return;
         SearchBox.Text += e.Character;
         SearchBox.SelectionStart = SearchBox.Text.Length;
         e.Handled = true;
@@ -858,9 +869,7 @@ public sealed partial class PanelWindow : Window
         var apps = new MenuFlyoutSubItem { Text = Loc.Get("Filter_App"), Icon = new FontIcon { Glyph = "\uE71D" } };
         foreach (var name in _host.Repository.RecentAppNames(12))
         {
-            // Tokens cannot contain spaces; the first word is distinctive enough for a substring match.
-            var word = name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
-            if (word is not null) apps.Items.Add(FilterItem(name, "app:" + word));
+            apps.Items.Add(FilterItem(name, "app:" + SearchQuery.EncodeValue(name)));
         }
         if (apps.Items.Count > 0) menu.Items.Add(apps);
 

@@ -37,10 +37,19 @@ public sealed partial class SettingsWindow : Window
         StackHotkeyBox.GestureChanged += StackHotkeyBox_GestureChanged;
         HotkeyBox.RecordingChanged += OnHotkeyRecording;
         host.PauseChanged += SyncPause;
+        ThemeManager.Changed += RefreshIgnoredApps; // rows use code-built brushes
+        Activated += (_, e) =>
+        {
+            if (e.WindowActivationState == WindowActivationState.Deactivated) CancelHotkeyRecording();
+        };
         Closed += (_, _) =>
         {
+            // Recording unregisters the global hotkeys; make sure they are back whatever happens.
+            CancelHotkeyRecording();
             HotkeyBox.RecordingChanged -= OnHotkeyRecording;
+            ThemeManager.Changed -= RefreshIgnoredApps;
             host.PauseChanged -= SyncPause;
+            _host.RegisterHotkeys();
         };
 
         ThemeManager.Register(this);
@@ -197,6 +206,8 @@ public sealed partial class SettingsWindow : Window
         var dialog = new ContentDialog
         {
             XamlRoot = Content.XamlRoot,
+            RequestedTheme = ((FrameworkElement)Content).ActualTheme,
+            Style = (Style)Application.Current.Resources["DefaultContentDialogStyle"],
             Title = title,
             Content = body,
             PrimaryButtonText = primary,
@@ -221,18 +232,35 @@ public sealed partial class SettingsWindow : Window
         }
     }
 
-    private void PanelHotkeyBox_GestureChanged(object? sender, HotkeyGesture gesture)
+    private void CancelHotkeyRecording()
     {
-        _host.Settings.PanelHotkey = gesture.ToString();
-        Save();
-        HotkeyError.IsOpen = _host.RegisterHotkeys().Count > 0;
+        PanelHotkeyBox.CancelRecording();
+        StackHotkeyBox.CancelRecording();
     }
 
-    private void StackHotkeyBox_GestureChanged(object? sender, HotkeyGesture gesture)
+    private void PanelHotkeyBox_GestureChanged(object? sender, HotkeyGesture gesture) =>
+        ApplyHotkey(PanelHotkeyBox, gesture, () => _host.Settings.PanelHotkey, v => _host.Settings.PanelHotkey = v);
+
+    private void StackHotkeyBox_GestureChanged(object? sender, HotkeyGesture gesture) =>
+        ApplyHotkey(StackHotkeyBox, gesture, () => _host.Settings.StackHotkey, v => _host.Settings.StackHotkey = v);
+
+    /// <summary>Switches to <paramref name="gesture"/>; if another app owns it, keeps the previous shortcut.</summary>
+    private void ApplyHotkey(HotkeyBox box, HotkeyGesture gesture, Func<string> get, Action<string> set)
     {
-        _host.Settings.StackHotkey = gesture.ToString();
-        Save();
-        HotkeyError.IsOpen = _host.RegisterHotkeys().Count > 0;
+        var previous = get();
+        set(gesture.ToString());
+        var failed = _host.RegisterHotkeys().Count > 0;
+        if (failed)
+        {
+            set(previous);
+            if (HotkeyGesture.TryParse(previous, out var old)) box.Gesture = old;
+            _host.RegisterHotkeys();
+        }
+        else
+        {
+            Save();
+        }
+        HotkeyError.IsOpen = failed;
     }
 
     private void ResetShortcuts_Click(object sender, RoutedEventArgs e)

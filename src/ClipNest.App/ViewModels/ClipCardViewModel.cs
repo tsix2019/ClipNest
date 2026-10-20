@@ -122,7 +122,7 @@ public sealed partial class ClipCardViewModel : ObservableObject
     public string FileName => Item.FilePaths is { Count: > 0 } paths ? Path.GetFileName(paths[0].TrimEnd('\\')) is { Length: > 0 } n ? n : paths[0] : "";
     public string FileDirectory => Item.FilePaths is { Count: > 0 } paths ? Path.GetDirectoryName(paths[0]) ?? "" : "";
     /// <summary>Segoe Fluent Icons glyph: folder, multiple documents, or a single document.</summary>
-    public string FileGlyph => Item.FilePaths is { Count: 1 } p && Directory.Exists(p[0]) ? "" : Item.FileCount > 1 ? "" : "";
+    public string FileGlyph => Item.FileCount > 1 ? "\uE8F1" : File1()?.IsDirectory == true ? "\uE8B7" : "\uE8A5";
 
     // ---------- footer ----------
 
@@ -137,20 +137,51 @@ public sealed partial class ClipCardViewModel : ObservableObject
         _ => "",
     };
 
-    private string FileSizeText()
+    private string FileSizeText() => File1() switch
     {
+        null => "",
+        { IsDirectory: true } => Loc.Get("Meta_Folder"),
+        { Exists: false } => Loc.Get("Meta_Missing"),
+        { } f => FormatBytes(f.Size),
+    };
+
+    private readonly record struct FileFacts(bool Exists, bool IsDirectory, long Size);
+
+    private FileFacts? _fileFacts;
+    private bool _fileFactsRequested;
+
+    /// <summary>
+    /// Facts about the first file, gathered off the UI thread: a path on an offline network share can
+    /// block for seconds. Returns null until available, then refreshes the bound properties.
+    /// </summary>
+    private FileFacts? File1()
+    {
+        if (_fileFacts is not null || _fileFactsRequested) return _fileFacts;
+        _fileFactsRequested = true;
         var path = Item.FilePaths.FirstOrDefault();
-        if (path is null) return "";
-        try
+        if (path is null) return null;
+        var ui = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+        _ = Task.Run(() =>
         {
-            if (Directory.Exists(path)) return Loc.Get("Meta_Folder");
-            var info = new FileInfo(path);
-            return info.Exists ? FormatBytes(info.Length) : Loc.Get("Meta_Missing");
-        }
-        catch (Exception)
-        {
-            return "";
-        }
+            FileFacts facts;
+            try
+            {
+                facts = Directory.Exists(path) ? new FileFacts(true, true, 0)
+                    : new FileInfo(path) is { Exists: true } info ? new FileFacts(true, false, info.Length)
+                    : new FileFacts(false, false, 0);
+            }
+            catch (Exception)
+            {
+                facts = new FileFacts(false, false, 0);
+            }
+            ui?.TryEnqueue(() =>
+            {
+                _fileFacts = facts;
+                OnPropertyChanged(nameof(FileGlyph));
+                OnPropertyChanged(nameof(MetaText));
+            });
+        });
+        return null;
     }
 
     private string RgbText()

@@ -143,3 +143,29 @@ public class ColorMathTests
         Assert.True(ColorMath.Contrast(c, text) >= 4.5, $"{c:X8}");
     }
 }
+
+public class FilterEncodingTests
+{
+    [Fact]
+    public void App_value_with_spaces_roundtrips()
+    {
+        var token = "app:" + SearchQuery.EncodeValue("Microsoft Edge");
+        Assert.Equal("app:Microsoft_Edge", token);
+        Assert.Equal("Microsoft Edge", SearchQuery.Parse(token + " hello", DateTimeOffset.Now).App);
+    }
+
+    [Theory]
+    [InlineData("Ctrl+Shift+V", true)]
+    [InlineData("Win+V", true)]
+    [InlineData("Alt+Shift+C", true)]
+    [InlineData("Shift+A", false)]
+    [InlineData("Alt+F4", false)]
+    [InlineData("Alt+Tab", false)]
+    [InlineData("Alt+Space", false)]
+    [InlineData("Ctrl+Alt+F4", true)]
+    public void Safe_global_hotkeys(string text, bool safe)
+    {
+        Assert.True(HotkeyGesture.TryParse(text, out var g));
+        Assert.Equal(safe, g.IsSafeGlobal);
+    }
+}

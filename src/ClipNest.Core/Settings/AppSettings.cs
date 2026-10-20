@@ -28,6 +28,12 @@ public sealed class AppSettings
     /// <summary>Skip content that apps flag as sensitive (password managers etc.).</summary>
     public bool IgnoreConfidential { get; set; } = true;
 
+    /// <summary>Skip text that looks like a credential (private keys, API tokens, JWTs).</summary>
+    public bool DetectSecrets { get; set; } = true;
+
+    /// <summary>Record copied images (screenshots etc.).</summary>
+    public bool RecordImages { get; set; } = true;
+
     /// <summary>Hide ClipNest windows from screenshots, recordings and screen sharing.</summary>
     public bool HideFromCapture { get; set; } = true;
 

@@ -86,6 +86,15 @@ public sealed class AppHost : IDisposable
         Loc.Initialize(Settings.Language);
         ThemeManager.Initialize(Settings.Theme);
 
+        var imported = false;
+        try
+        {
+            imported = BackupService.ApplyPendingImport(DataDirectory);
+        }
+        catch (Exception e)
+        {
+            Log.Error("Applying backup import", e);
+        }
         Repository = ClipRepository.Open(Path.Combine(DataDirectory, "clipnest.db"), out var recovered);
         Blobs = new BlobStore(DataDirectory);
         Images = new ImageProcessor();
@@ -120,6 +129,8 @@ public sealed class AppHost : IDisposable
 
         if (recovered)
             Tray.ShowNotification("ClipNest", Loc.Get("Notify_DbRecovered"));
+        if (imported)
+            Tray.ShowNotification("ClipNest", Loc.Get("Notify_Imported"));
 
         SyncStartupRegistration();
 
@@ -210,6 +221,17 @@ public sealed class AppHost : IDisposable
             {
                 var snapshot = Reader.Read();
                 if (snapshot is null || Settings.IsIgnored(snapshot.SourceAppPath)) return;
+                if (_ignoreNext)
+                {
+                    _ignoreNext = false;
+                    return;
+                }
+                if (Settings.DetectSecrets && SecretDetector.LooksSecret(snapshot.Text))
+                {
+                    Log.Info("Skipped a copy that looks like a credential");
+                    return;
+                }
+                if (!Settings.RecordImages && snapshot.HasImage && !snapshot.HasText && !snapshot.HasFiles) return;
                 var result = Ingestor.Ingest(snapshot, DateTimeOffset.Now);
                 if (result is null) return;
                 if (result.IsNew) Enricher.Enqueue(result.Item);
@@ -260,6 +282,10 @@ public sealed class AppHost : IDisposable
                     Rtf = item.Blobs.HasFlag(BlobFlags.Rtf) ? Blobs.ReadText(item.ContentHash, BlobFlags.Rtf) : null,
                     Html = item.Blobs.HasFlag(BlobFlags.Html) ? Blobs.ReadText(item.ContentHash, BlobFlags.Html) : null,
                 },
+                _ when item.IsPinned && Placeholders.HasAny(item.Text) => new ClipboardPayload
+                {
+                    Text = Placeholders.Expand(item.Text!, DateTimeOffset.Now, Reader.ReadText),
+                },
                 _ => new ClipboardPayload { Text = item.Text },
             };
         }
@@ -288,6 +314,7 @@ public sealed class AppHost : IDisposable
 
         if (!pasteIntoApp || !Settings.PasteToActiveApp) return;
         var outcome = await Injector.PasteAsync();
+        if (outcome != PasteOutcome.Pasted) Log.Warn($"Paste into 0x{Injector.Target:X}: {outcome}");
         switch (outcome)
         {
             case PasteOutcome.Blocked:
@@ -531,10 +558,49 @@ public sealed class AppHost : IDisposable
             new TrayMenuItem(Loc.Format("Tray_Open", Settings.PanelHotkey), ShowPanel),
             TrayMenuItem.Separator,
             pause,
+            new TrayMenuItem(Loc.Get("Tray_IgnoreNext"), IgnoreNextCopy, Checked: _ignoreNext),
             new TrayMenuItem(Loc.Get("Tray_Settings"), OpenSettings),
             TrayMenuItem.Separator,
             new TrayMenuItem(Loc.Get("Tray_Quit"), Quit),
         ];
+    }
+
+    // ---------- extras ----------
+
+    private volatile bool _ignoreNext;
+
+    /// <summary>The next copy is not recorded (e.g. before copying a password by hand).</summary>
+    public void IgnoreNextCopy() => _ignoreNext = !_ignoreNext;
+
+    /// <summary>Pastes arbitrary text (a "Paste as…" result) into the previously active app.</summary>
+    public async Task PasteTextAsync(string text)
+    {
+        var written = await Task.Run(() => Writer.Write(new ClipboardPayload { Text = text }, plainText: true));
+        Panel.HideNow();
+        if (!written || !Settings.PasteToActiveApp) return;
+        var outcome = await Injector.PasteAsync();
+        if (outcome == PasteOutcome.Blocked) Tray.ShowNotification(Loc.Get("Notify_CopiedTitle"), Loc.Get("Notify_PasteBlocked"));
+        else if (outcome == PasteOutcome.FocusFailed) Tray.ShowNotification(Loc.Get("Notify_CopiedTitle"), Loc.Get("Notify_PasteFailed"));
+    }
+
+    public Task ExportBackupAsync(string zipPath) =>
+        Task.Run(() => Exclusive(() =>
+        {
+            BackupService.Export(Repository, DataDirectory, zipPath);
+            return true;
+        }));
+
+    /// <summary>Stages a backup and restarts ClipNest to apply it (throws InvalidDataException for foreign files).</summary>
+    public async Task ImportBackupAndRestartAsync(string zipPath)
+    {
+        await Task.Run(() => BackupService.StageImport(zipPath, DataDirectory));
+        Restart();
+    }
+
+    public void Restart()
+    {
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ExePath, $"--restart-after {Environment.ProcessId}") { UseShellExecute = false });
+        Quit();
     }
 
     public void Quit()

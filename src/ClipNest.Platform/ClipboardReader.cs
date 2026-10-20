@@ -82,6 +82,20 @@ public sealed unsafe class ClipboardReader(ImageProcessor images, Func<bool> ign
         return snapshot.HasText || snapshot.HasImage || snapshot.HasFiles ? snapshot : null;
     }
 
+    /// <summary>Current clipboard text, including content ClipNest wrote itself (for the {clipboard} placeholder).</summary>
+    public string? ReadText()
+    {
+        if (!TryOpen()) return null;
+        try
+        {
+            return IsClipboardFormatAvailable(CF_UNICODETEXT) ? ReadUnicode(CF_UNICODETEXT) : null;
+        }
+        finally
+        {
+            CloseClipboard();
+        }
+    }
+
     private static bool TryOpen()
     {
         for (var attempt = 0; attempt < 5; attempt++)

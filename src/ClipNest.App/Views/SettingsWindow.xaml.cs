@@ -92,6 +92,8 @@ public sealed partial class SettingsWindow : Window
         KeysHelp.Text = Loc.Get("Settings_KeysHelp");
 
         ConfidentialToggle.IsOn = s.IgnoreConfidential;
+        SecretsToggle.IsOn = s.DetectSecrets;
+        ImagesToggle.IsOn = s.RecordImages;
         CaptureToggle.IsOn = s.HideFromCapture;
         SyncPause();
         RefreshIgnoredApps();
@@ -283,6 +285,78 @@ public sealed partial class SettingsWindow : Window
         if (_loading) return;
         _host.Settings.IgnoreConfidential = ConfidentialToggle.IsOn;
         Save();
+    }
+
+    private void SecretsToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _host.Settings.DetectSecrets = SecretsToggle.IsOn;
+        Save();
+    }
+
+    private void ImagesToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _host.Settings.RecordImages = ImagesToggle.IsOn;
+        Save();
+    }
+
+    // ---------- backup ----------
+
+    private async void Export_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new FileSavePicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary, SuggestedFileName = $"ClipNest-{DateTime.Now:yyyyMMdd}" };
+        picker.FileTypeChoices.Add("ZIP", [".zip"]);
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        var file = await picker.PickSaveFileAsync();
+        if (file is null) return;
+        try
+        {
+            await _host.ExportBackupAsync(file.Path);
+            await InfoAsync(Loc.Get("Settings_Backup"), Loc.Format("Settings_ExportDone", file.Path));
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Export backup", ex);
+            await InfoAsync(Loc.Get("Settings_Backup"), ex.Message);
+        }
+    }
+
+    private async void Import_Click(object sender, RoutedEventArgs e)
+    {
+        var picker = new FileOpenPicker { SuggestedStartLocation = PickerLocationId.DocumentsLibrary };
+        picker.FileTypeFilter.Add(".zip");
+        InitializeWithWindow.Initialize(picker, WindowNative.GetWindowHandle(this));
+        var file = await picker.PickSingleFileAsync();
+        if (file is null) return;
+        if (!await ConfirmAsync(Loc.Get("Settings_ImportConfirmTitle"), Loc.Get("Settings_ImportConfirmBody"), Loc.Get("Settings_Import"))) return;
+        try
+        {
+            await _host.ImportBackupAndRestartAsync(file.Path);
+        }
+        catch (InvalidDataException)
+        {
+            await InfoAsync(Loc.Get("Settings_Backup"), Loc.Get("Settings_ImportInvalid"));
+        }
+        catch (Exception ex)
+        {
+            Log.Error("Import backup", ex);
+            await InfoAsync(Loc.Get("Settings_Backup"), ex.Message);
+        }
+    }
+
+    private async Task InfoAsync(string title, string body)
+    {
+        var dialog = new ContentDialog
+        {
+            XamlRoot = Content.XamlRoot,
+            RequestedTheme = ((FrameworkElement)Content).ActualTheme,
+            Style = (Style)Application.Current.Resources["DefaultContentDialogStyle"],
+            Title = title,
+            Content = new TextBlock { Text = body, TextWrapping = TextWrapping.Wrap, IsTextSelectionEnabled = true },
+            CloseButtonText = Loc.Get("Common_OK"),
+        };
+        await dialog.ShowAsync();
     }
 
     private void CaptureToggle_Toggled(object sender, RoutedEventArgs e)

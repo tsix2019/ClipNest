@@ -327,6 +327,12 @@ public sealed class ClipRepository : IClipRepository, IDisposable
         lock (_lock) return _db.Scalar<long>("SELECT EXISTS(SELECT 1 FROM items WHERE hash = ?)", hash) != 0;
     }
 
+    /// <summary>Writes a consistent copy of the database to <paramref name="path"/> (for backups).</summary>
+    public void VacuumInto(string path)
+    {
+        lock (_lock) _db.Execute("VACUUM INTO ?", path);
+    }
+
     // ---------- helpers ----------
 
     /// <summary>Trigram FTS needs at least 3 characters per term; shorter input uses LIKE.</summary>

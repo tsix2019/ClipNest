@@ -158,7 +158,7 @@ public sealed partial class PanelWindow : Window
         _shown = true;
         AppWindow.Show(true);
         Activate();
-        WindowStyler.BringToFront(_hwnd);
+        if (!WindowStyler.BringToFront(_hwnd)) Log.Warn("Panel could not take the foreground");
         ShowStoryboard.Begin();
         _clockTimer.Start();
         // The list may realize its containers only now (first show): select + focus once layout ran.
@@ -529,6 +529,7 @@ public sealed partial class PanelWindow : Window
         menu.Items.Add(Item("Menu_Paste", "\uE77F", () => _ = PasteAsync(cards, false), "Enter"));
         menu.Items.Add(Item("Menu_PastePlain", "\uE8E9", () => _ = PasteAsync(cards, true), "Shift+Enter"));
         menu.Items.Add(Item("Menu_Copy", "\uE8C8", CopySelected, "Ctrl+C"));
+        if (cards.Count == 1 && BuildPasteAsMenu(first.Item) is { } pasteAs) menu.Items.Insert(2, pasteAs);
         menu.Items.Add(new MenuFlyoutSeparator());
 
         var pinTo = new MenuFlyoutSubItem { Text = Loc.Get("Menu_PinTo"), Icon = new FontIcon { Glyph = "\uE718" } };
@@ -585,6 +586,60 @@ public sealed partial class PanelWindow : Window
             item.Click += (_, _) => action();
             return item;
         }
+    }
+
+    /// <summary>"Paste as…" choices for one item; null when nothing applies.</summary>
+    private MenuFlyoutSubItem? BuildPasteAsMenu(ClipItem item)
+    {
+        var sub = new MenuFlyoutSubItem { Text = Loc.Get("Menu_PasteAs"), Icon = new FontIcon { Glyph = "" } };
+
+        void Add(string label, string? result, string? hint = null)
+        {
+            var entry = new MenuFlyoutItem { Text = label, IsEnabled = !string.IsNullOrEmpty(result) };
+            if (hint is not null) entry.KeyboardAcceleratorTextOverride = hint;
+            if (result is not null) entry.Click += (_, _) => _ = _host.PasteTextAsync(result);
+            sub.Items.Add(entry);
+        }
+
+        static string Preview(string s)
+        {
+            var oneLine = s.ReplaceLineEndings(" ");
+            return oneLine.Length > 28 ? oneLine[..28] + "…" : oneLine;
+        }
+
+        switch (item.Kind)
+        {
+            case ClipKind.Color:
+                foreach (var form in ColorFormats.All(item.Text ?? "")) Add(form, form);
+                break;
+
+            case ClipKind.Image:
+                if (string.IsNullOrWhiteSpace(item.OcrText)) return null;
+                Add(Loc.Get("Menu_PasteOcr"), item.OcrText, Preview(item.OcrText));
+                break;
+
+            case ClipKind.File:
+                Add(Loc.Get("Menu_PastePath"), string.Join("\r\n", item.FilePaths));
+                Add(Loc.Get("Menu_PasteNames"), string.Join("\r\n", item.FilePaths.Select(Path.GetFileName)));
+                break;
+
+            default:
+                var text = item.Text ?? "";
+                if (text.Length == 0) return null;
+                var first = true;
+                foreach (var group in TextTransforms.Groups)
+                {
+                    if (!first) sub.Items.Add(new MenuFlyoutSeparator());
+                    first = false;
+                    foreach (var t in group)
+                    {
+                        var result = text.Length <= 200_000 ? TextTransforms.Apply(t, text) : null;
+                        Add(Loc.Get("Transform_" + t), result == text ? null : result, result is null || result == text ? null : Preview(result));
+                    }
+                }
+                break;
+        }
+        return sub.Items.Count > 0 ? sub : null;
     }
 
     private static void ShowInExplorer(string path) =>

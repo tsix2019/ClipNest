@@ -137,6 +137,13 @@ public sealed class PasteInjector : IDisposable
         if (n > 0) SendInput((uint)n, ups, sizeof(INPUT));
     }
 
+    /// <summary>Alt down or up; an Alt press counts as user input and lifts the foreground lock.</summary>
+    public static unsafe void SendAlt(bool up)
+    {
+        var input = Key(VK_MENU, up);
+        SendInput(1, &input, sizeof(INPUT));
+    }
+
     public static unsafe void SendCtrlV()
     {
         var inputs = stackalloc INPUT[4];

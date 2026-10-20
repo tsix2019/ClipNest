@@ -85,9 +85,28 @@ public static class DisplayHelper
 public static class WindowStyler
 {
     /// <summary>Gives the window keyboard focus (allowed right after a hotkey or tray click).</summary>
-    public static void BringToFront(nint hwnd)
+    /// <returns>True when <paramref name="hwnd"/> ended up in the foreground.</returns>
+    public static bool BringToFront(nint hwnd)
     {
-        if (GetForegroundWindow() != hwnd) SetForegroundWindow(hwnd);
+        if (GetForegroundWindow() == hwnd || SetForegroundWindow(hwnd)) return true;
+
+        // Foreground lock: borrow the current foreground thread's input state.
+        var fgThread = GetWindowThreadProcessId(GetForegroundWindow(), out _);
+        var self = Kernel32.GetCurrentThreadId();
+        if (fgThread != 0 && fgThread != self && AttachThreadInput(self, fgThread, true))
+        {
+            BringWindowToTop(hwnd);
+            SetForegroundWindow(hwnd);
+            AttachThreadInput(self, fgThread, false);
+        }
+        if (GetForegroundWindow() == hwnd) return true;
+
+        // Last resort: a synthetic Alt tap counts as "last input" and lifts the lock.
+        // Release Alt only after switching, so the old app does not enter menu mode.
+        PasteInjector.SendAlt(up: false);
+        SetForegroundWindow(hwnd);
+        PasteInjector.SendAlt(up: true);
+        return GetForegroundWindow() == hwnd;
     }
 
     /// <summary>Hides the window from the taskbar and Alt+Tab.</summary>

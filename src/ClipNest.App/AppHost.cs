@@ -133,6 +133,16 @@ public sealed class AppHost : IDisposable
         backfill.Tick += (_, _) => Enricher.Backfill();
         backfill.Start();
 
+        // Startup touched a lot of code once; give those pages back while we sit in the tray.
+        var trim = UI.CreateTimer();
+        trim.Interval = TimeSpan.FromSeconds(25);
+        trim.IsRepeating = false;
+        trim.Tick += (_, _) =>
+        {
+            if (!Panel.IsShown) MemoryTrimmer.Trim();
+        };
+        trim.Start();
+
 #if DEBUG
         if (Environment.GetEnvironmentVariable("CLIPNEST_SNAPSHOT") is { Length: > 0 } snapshotDir)
             DevTools.RunSnapshot(this, snapshotDir);
@@ -169,7 +179,8 @@ public sealed class AppHost : IDisposable
     {
         result = 0;
         if (msg != SingleInstance.ActivateMessage) return false;
-        ShowPanel();
+        if (wParam == 1) TogglePanel();
+        else ShowPanel();
         return true;
     }
 

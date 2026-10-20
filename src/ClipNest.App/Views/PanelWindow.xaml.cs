@@ -32,6 +32,7 @@ public sealed partial class PanelWindow : Window
     private readonly DispatcherQueueTimer _searchDebounce;
     private readonly DispatcherQueueTimer _clockTimer;
     private readonly DispatcherQueueTimer _unloadTimer;
+    private readonly DispatcherQueueTimer _hideTimer;
     private ScrollViewer? _scroller;
     private bool _shown;
     private bool _hiding;
@@ -71,6 +72,14 @@ public sealed partial class PanelWindow : Window
             if (_shown) return;
             ViewModel.Unload();
             MemoryTrimmer.Trim();
+        };
+
+        _hideTimer = ui.CreateTimer();
+        _hideTimer.Interval = TimeSpan.FromMilliseconds(130);
+        _hideTimer.IsRepeating = false;
+        _hideTimer.Tick += (_, _) =>
+        {
+            if (_hiding) HideNow();
         };
 
         Activated += OnActivated;
@@ -169,21 +178,18 @@ public sealed partial class PanelWindow : Window
     {
         if (!_shown || _hiding) return;
         _hiding = true;
-        HideStoryboard.Completed -= OnHideCompleted;
-        HideStoryboard.Completed += OnHideCompleted;
         HideStoryboard.Begin();
-    }
-
-    private void OnHideCompleted(object? sender, object e)
-    {
-        HideStoryboard.Completed -= OnHideCompleted;
-        if (_hiding) HideNow();
+        // A timer rather than Storyboard.Completed: animations do not tick when nothing is
+        // composed (locked session, display off), and the panel must still go away.
+        _hideTimer.Stop();
+        _hideTimer.Start();
     }
 
     /// <summary>Immediate hide (before pasting, so focus can return to the target app quickly).</summary>
     public void HideNow()
     {
         _hiding = false;
+        _hideTimer.Stop();
         PreviewWindow.Close(this);
         if (!_shown) return;
         _shown = false;

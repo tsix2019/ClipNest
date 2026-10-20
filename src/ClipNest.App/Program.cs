@@ -15,7 +15,7 @@ public static class Program
         if (_instance is null)
         {
             // Already running: ask it to show the panel and leave.
-            SingleInstance.SignalExisting();
+            SingleInstance.SignalExisting(toggle: Environment.GetCommandLineArgs().Contains("--toggle"));
             return 0;
         }
 

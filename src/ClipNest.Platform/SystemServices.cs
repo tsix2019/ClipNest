@@ -43,10 +43,11 @@ public sealed class SingleInstance : IDisposable
         return null;
     }
 
-    public static void SignalExisting()
+    /// <param name="toggle">True: show the panel if hidden, hide it if shown. False: always show.</param>
+    public static void SignalExisting(bool toggle = false)
     {
         var hwnd = FindWindowW(MessageWindow.ClassName, null);
-        if (hwnd != 0) PostMessageW(hwnd, ActivateMessage, 0, 0);
+        if (hwnd != 0) PostMessageW(hwnd, ActivateMessage, toggle ? 1 : 0, 0);
     }
 
     public void Dispose()

@@ -150,5 +150,21 @@
   "Stack_NewestFirst": "Pasting newest first — click to paste in copy order",
   "Stack_OldestFirst": "Pasting in copy order — click to paste newest first",
   "Stack_EmptyHint": "Copy several things one after another. Then press {0} repeatedly to paste them in order.",
-  "Stack_NextHint": "The highlighted item is pasted with the next {0}."
+  "Stack_NextHint": "The highlighted item is pasted with the next {0}.",
+
+  "Onboarding_Title": "Welcome to ClipNest",
+  "Onboarding_Subtitle": "Everything you copy is saved, searchable and one keystroke away.",
+  "Onboarding_Hotkey": "Press this anywhere to open your clipboard history. ClipNest keeps running in the notification area.",
+  "Onboarding_Start": "Get started",
+
+  "Filter_Button": "Filter",
+  "Filter_Type": "Type",
+  "Filter_App": "App",
+  "Filter_Date": "Date",
+  "Filter_Pinboard": "Pinboard",
+  "Filter_Today": "Today",
+  "Filter_Yesterday": "Yesterday",
+  "Filter_7d": "Last 7 days",
+  "Filter_30d": "Last 30 days",
+  "Filter_Clear": "Clear filters"
 }

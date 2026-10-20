@@ -55,11 +55,11 @@ public sealed class ClipRepository : IClipRepository, IDisposable
     {
         lock (_lock)
         {
-            var args = new object?[] { item.Id }.Concat(ItemArgs(item)).ToArray();
-            _db.Execute(
-                "INSERT OR REPLACE INTO items(id, kind, title, text, hash, app_path, app_name, created_at, pinboard_id, char_count, img_w, img_h, blobs, ocr_text, link_title, file_count) " +
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                args);
+            // The old rowid may already belong to a newer item (SQLite reuses the highest id), so the
+            // restored item gets a fresh id. Its pinboard may have been deleted meanwhile.
+            if (item.PinboardId is { } pin && _db.Scalar<long>("SELECT EXISTS(SELECT 1 FROM pinboards WHERE id = ?)", pin) == 0)
+                item.PinboardId = null;
+            Insert(item);
         }
     }
 
@@ -411,5 +411,9 @@ public sealed class ClipRepository : IClipRepository, IDisposable
         FileCount = s.GetInt32OrNull(15),
     };
 
-    public void Dispose() => _db.Dispose();
+    public void Dispose()
+    {
+        // Wait for any in-flight call: finalizing statements mid-step would be a use-after-free.
+        lock (_lock) _db.Dispose();
+    }
 }

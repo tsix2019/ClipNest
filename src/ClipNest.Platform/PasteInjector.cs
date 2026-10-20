@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using ClipNest.Platform.Native;
 using static ClipNest.Platform.Native.User32;
 
@@ -12,21 +13,66 @@ public enum PasteOutcome
     FocusFailed,
 }
 
-/// <summary>Remembers the window that was active before the panel opened and pastes into it.</summary>
-public sealed class PasteInjector
+/// <summary>
+/// Remembers the app window the user last worked in and pastes into it. Foreground changes are tracked
+/// continuously, so opening the panel from the tray (taskbar in front) still targets the real app.
+/// Must be created on a thread that pumps messages.
+/// </summary>
+public sealed class PasteInjector : IDisposable
 {
     /// <summary>Tag on our synthetic input so our own keyboard hook can recognize it.</summary>
     public const nint InjectedTag = 0x434E5354; // "CNST"
 
     private static readonly ushort[] Modifiers = [VK_LSHIFT, VK_RSHIFT, VK_LCONTROL, VK_RCONTROL, VK_LMENU, VK_RMENU, VK_LWIN, VK_RWIN];
 
+    /// <summary>Shell surfaces that are never paste targets.</summary>
+    private static readonly HashSet<string> ShellClasses = new(StringComparer.Ordinal)
+    {
+        "Shell_TrayWnd", "Shell_SecondaryTrayWnd", "NotifyIconOverflowWindow", "TopLevelWindowForOverflowXamlIsland",
+        "Windows.UI.Core.CoreWindow", "XamlExplorerHostIslandWindow", "ForegroundStaging", "MultitaskingViewFrame",
+    };
+
+    private static PasteInjector? _instance;
+    private readonly nint _hook;
+    private nint _lastAppWindow;
+
+    public unsafe PasteInjector()
+    {
+        _instance = this;
+        Remember(GetForegroundWindow());
+        _hook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, 0, &OnForeground, 0, 0, WINEVENT_OUTOFCONTEXT);
+    }
+
     public nint Target { get; private set; }
 
     /// <summary>Call right before showing the panel.</summary>
     public void CaptureTarget()
     {
-        var fg = GetForegroundWindow();
-        if (fg != 0 && !ProcessInfo.IsOwnWindow(fg)) Target = fg;
+        Remember(GetForegroundWindow());
+        Target = _lastAppWindow != 0 && IsWindow(_lastAppWindow) ? _lastAppWindow : 0;
+    }
+
+    [UnmanagedCallersOnly]
+    private static void OnForeground(nint hook, uint evt, nint hwnd, int idObject, int idChild, uint thread, uint time) =>
+        _instance?.Remember(hwnd);
+
+    private void Remember(nint hwnd)
+    {
+        if (IsAppWindow(hwnd)) _lastAppWindow = hwnd;
+    }
+
+    internal static unsafe bool IsAppWindow(nint hwnd)
+    {
+        if (hwnd == 0 || !IsWindow(hwnd) || ProcessInfo.IsOwnWindow(hwnd)) return false;
+        var buffer = stackalloc char[128];
+        var len = GetClassNameW(hwnd, buffer, 128);
+        return len <= 0 || !ShellClasses.Contains(new string(buffer, 0, len));
+    }
+
+    public void Dispose()
+    {
+        if (_hook != 0) UnhookWinEvent(_hook);
+        if (ReferenceEquals(_instance, this)) _instance = null;
     }
 
     public async Task<PasteOutcome> PasteAsync()

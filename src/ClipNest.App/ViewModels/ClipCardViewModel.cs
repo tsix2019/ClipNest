@@ -107,7 +107,8 @@ public sealed partial class ClipCardViewModel : ObservableObject
     {
         get
         {
-            var hex = (Item.Text ?? "#000000").TrimStart('#');
+            if (!ClipClassifier.TryParseColor(Item.Text ?? "", out var normalized)) return 0xFF808080; // never throw from a binding
+            var hex = normalized.TrimStart('#');
             var rgb = Convert.ToUInt32(hex[..6], 16);
             var alpha = hex.Length == 8 ? Convert.ToUInt32(hex[6..8], 16) : 0xFF;
             return (alpha << 24) | rgb;

@@ -150,5 +150,21 @@
   "Stack_NewestFirst": "当前：最新的先粘贴，点击改为按复制顺序",
   "Stack_OldestFirst": "当前：按复制顺序粘贴，点击改为最新的先粘贴",
   "Stack_EmptyHint": "依次复制多项内容，然后连续按 {0}，即可按顺序逐条粘贴。",
-  "Stack_NextHint": "下次按 {0} 将粘贴高亮的条目。"
+  "Stack_NextHint": "下次按 {0} 将粘贴高亮的条目。",
+
+  "Onboarding_Title": "欢迎使用 ClipNest",
+  "Onboarding_Subtitle": "你复制的一切都会被保存、可搜索，按一下快捷键就能找回。",
+  "Onboarding_Hotkey": "在任何地方按下这组快捷键，即可打开剪贴板历史。ClipNest 会常驻在任务栏通知区域。",
+  "Onboarding_Start": "开始使用",
+
+  "Filter_Button": "筛选",
+  "Filter_Type": "类型",
+  "Filter_App": "来源应用",
+  "Filter_Date": "日期",
+  "Filter_Pinboard": "Pinboard",
+  "Filter_Today": "今天",
+  "Filter_Yesterday": "昨天",
+  "Filter_7d": "最近 7 天",
+  "Filter_30d": "最近 30 天",
+  "Filter_Clear": "清除筛选"
 }

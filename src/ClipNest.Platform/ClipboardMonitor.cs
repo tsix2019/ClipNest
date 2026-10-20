@@ -41,6 +41,8 @@ public sealed class ClipboardMonitor : IDisposable
         var seq = User32.GetClipboardSequenceNumber();
         if (seq == _lastSequence) return;
         _lastSequence = seq;
+        // Our own write (paste): do not open the clipboard while the target app reads it.
+        if (User32.GetClipboardOwner() == _window.Handle) return;
         if (_context is not null) _context.Post(_ => Changed?.Invoke(), null);
         else Changed?.Invoke();
     }

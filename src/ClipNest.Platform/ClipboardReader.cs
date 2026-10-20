@@ -35,7 +35,9 @@ public sealed unsafe class ClipboardReader(ImageProcessor images, Func<bool> ign
             if (IsClipboardFormatAvailable(ClipboardFormats.Rtf)) rtf = ReadAnsi(ClipboardFormats.Rtf, Encoding.Latin1);
             if (IsClipboardFormatAvailable(ClipboardFormats.Html)) html = ReadAnsi(ClipboardFormats.Html, Encoding.UTF8);
 
-            if (files is null)
+            // Bitmaps only matter when there is no text: Office renders a full image of the selection
+            // on demand, which is slow and would always be discarded.
+            if (files is null && text is null)
             {
                 if (IsClipboardFormatAvailable(ClipboardFormats.Png))
                 {

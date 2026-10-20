@@ -12,7 +12,7 @@ public interface IClipRepository
     /// <summary>Inserts and assigns <see cref="ClipItem.Id"/>; returns the id.</summary>
     long Insert(ClipItem item);
 
-    /// <summary>Re-inserts a previously deleted item with its original id (undo).</summary>
+    /// <summary>Re-inserts a previously deleted item (undo). The item gets a new id, written back to <paramref name="item"/>.</summary>
     void Restore(ClipItem item);
 
     /// <summary>Marks an item as copied again: refreshes its time and source app so it moves to the front.</summary>

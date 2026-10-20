@@ -111,6 +111,8 @@ public sealed class AppHost : IDisposable
         var failed = RegisterHotkeys();
         if (failed.Count > 0)
             Tray.ShowNotification(Loc.Get("Notify_HotkeyFailedTitle"), Loc.Format("Notify_HotkeyFailed", string.Join(", ", failed)));
+        else if (!Settings.OnboardingDone && !_autostart && Environment.GetEnvironmentVariable("CLIPNEST_SNAPSHOT") is null)
+            new OnboardingWindow(this).Activate();
         else if (!_autostart)
             Tray.ShowNotification("ClipNest", Loc.Format("Notify_Running", Settings.PanelHotkey));
 
@@ -318,8 +320,13 @@ public sealed class AppHost : IDisposable
         if (_undo.Count == 0) return null;
         var item = _undo[^1];
         _undo.RemoveAt(_undo.Count - 1);
-        if (Repository.FindByHash(item.ContentHash) is not null) return null; // copied again meanwhile
-        Repository.Restore(item);
+        var restored = Exclusive(() =>
+        {
+            if (Repository.FindByHash(item.ContentHash) is not null) return false; // copied again meanwhile
+            Repository.Restore(item);
+            return true;
+        });
+        if (!restored) return null;
         ItemChanged?.Invoke(item);
         return item;
     }
@@ -333,8 +340,19 @@ public sealed class AppHost : IDisposable
 
     public void UpdateText(ClipItem item, ClipKind kind, string text)
     {
-        var hash = ContentHasher.ForText(kind, kind == ClipKind.Color && ClipClassifier.TryParseColor(text, out var hex) ? hex : text);
-        Repository.UpdateText(item.Id, kind, text, hash, text.Length);
+        // Same normalization as ClipIngestor, so re-copying the edited content dedupes against it.
+        text = kind switch
+        {
+            ClipKind.Color when ClipClassifier.TryParseColor(text, out var hex) => hex,
+            ClipKind.Link => text.Trim(),
+            _ => ContentHasher.NormalizeText(text),
+        };
+        var hash = ContentHasher.ForText(kind, text);
+        Exclusive(() =>
+        {
+            Repository.UpdateText(item.Id, kind, text, hash, text.Length);
+            return true;
+        });
         item.Kind = kind;
         item.Text = text;
         item.ContentHash = hash;
@@ -354,10 +372,45 @@ public sealed class AppHost : IDisposable
         }
     }
 
+    /// <summary>Deletes all unpinned items. Blocks while a capture is in progress; call off the UI thread.</summary>
     public void ClearHistory()
     {
-        foreach (var hash in Repository.ClearHistory()) Blobs.DeleteAll(hash);
-        _undo.Clear();
+        Exclusive(() =>
+        {
+            DeleteBlobs(Repository.ClearHistory());
+            return true;
+        });
+        UI.TryEnqueue(_undo.Clear);
+    }
+
+    /// <summary>Deletes a pinboard with its items. Call off the UI thread.</summary>
+    public void DeletePinboard(long id) => Exclusive(() =>
+    {
+        DeleteBlobs(Repository.DeletePinboard(id));
+        return true;
+    });
+
+    /// <summary>Runs <paramref name="body"/> while no capture is in progress (captures write blobs before rows).</summary>
+    private T Exclusive<T>(Func<T> body)
+    {
+        _ingestGate.Wait();
+        try
+        {
+            return body();
+        }
+        finally
+        {
+            _ingestGate.Release();
+        }
+    }
+
+    /// <summary>Blob files are shared by content hash: only delete those no remaining item uses.</summary>
+    private void DeleteBlobs(IEnumerable<string> hashes)
+    {
+        foreach (var hash in hashes)
+        {
+            if (!Repository.IsHashReferenced(hash)) Blobs.DeleteAll(hash);
+        }
     }
 
     // ---------- pause ----------
@@ -397,22 +450,31 @@ public sealed class AppHost : IDisposable
     {
         try
         {
-            var removed = new List<string>();
-            if (RetentionPolicy.Cutoff(Settings.Retention, DateTimeOffset.Now) is { } cutoff)
-                removed.AddRange(Repository.PurgeOlderThan(cutoff));
-            removed.AddRange(Repository.EnforceCap(RetentionPolicy.HardCap));
-            foreach (var hash in removed) Blobs.DeleteAll(hash);
-            if (removed.Count > 0) Log.Info($"Retention removed {removed.Count} items");
-
-            if (sweepOrphans)
+            Exclusive(() =>
             {
-                var swept = Blobs.SweepOrphans(Repository.IsHashReferenced);
-                if (swept > 0) Log.Info($"Removed {swept} orphaned blob files");
-            }
+                RunMaintenanceCore(sweepOrphans);
+                return true;
+            });
         }
         catch (Exception e)
         {
             Log.Error("Maintenance", e);
+        }
+    }
+
+    private void RunMaintenanceCore(bool sweepOrphans)
+    {
+        var removed = new List<string>();
+        if (RetentionPolicy.Cutoff(Settings.Retention, DateTimeOffset.Now) is { } cutoff)
+            removed.AddRange(Repository.PurgeOlderThan(cutoff));
+        removed.AddRange(Repository.EnforceCap(RetentionPolicy.HardCap));
+        DeleteBlobs(removed);
+        if (removed.Count > 0) Log.Info($"Retention removed {removed.Count} items");
+
+        if (sweepOrphans)
+        {
+            var swept = Blobs.SweepOrphans(Repository.IsHashReferenced);
+            if (swept > 0) Log.Info($"Removed {swept} orphaned blob files");
         }
     }
 
@@ -477,6 +539,9 @@ public sealed class AppHost : IDisposable
     {
         Stack?.Dispose();
         Enricher?.Dispose();
+        Injector?.Dispose();
+        // Let an in-flight capture or maintenance pass finish before closing the database.
+        var idle = _ingestGate.Wait(TimeSpan.FromSeconds(2));
         _maintenanceTimer?.Stop();
         _resumeTimer?.Stop();
         Tray?.Dispose();
@@ -485,5 +550,6 @@ public sealed class AppHost : IDisposable
         Messages?.Dispose();
         NativeIcon.Destroy(_trayIcon);
         Repository?.Dispose();
+        if (idle) _ingestGate.Release();
     }
 }

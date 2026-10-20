@@ -216,11 +216,17 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <TextBox x:Name="SearchBox" Width="260" Height="34" VerticalAlignment="Center"
-                     PlaceholderText="{l:Tr Key=Panel_Search}"
-                     CornerRadius="9"
-                     TextChanged="SearchBox_TextChanged"
-                     IsSpellCheckEnabled="False" />
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                <TextBox x:Name="SearchBox" Width="260" Height="34" VerticalAlignment="Center"
+                         PlaceholderText="{l:Tr Key=Panel_Search}"
+                         CornerRadius="9"
+                         TextChanged="SearchBox_TextChanged"
+                         IsSpellCheckEnabled="False" />
+                <Button x:Name="FilterButton" Style="{StaticResource IconButtonStyle}" Click="FilterButton_Click"
+                        ToolTipService.ToolTip="{l:Tr Key=Filter_Button}">
+                    <FontIcon Glyph="&#xE71C;" FontSize="14" />
+                </Button>
+            </StackPanel>
 
             <ScrollViewer Grid.Column="1" HorizontalScrollMode="Auto" HorizontalScrollBarVisibility="Hidden"
                           VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">

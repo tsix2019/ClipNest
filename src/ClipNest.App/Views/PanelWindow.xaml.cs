@@ -36,6 +36,8 @@ public sealed partial class PanelWindow : Window
     private ScrollViewer? _scroller;
     private bool _shown;
     private bool _hiding;
+    private bool _showing;
+    private bool _showCancelled;
 
     // resize-by-dragging state
     private bool _resizing;
@@ -128,8 +130,10 @@ public sealed partial class PanelWindow : Window
 
     public async void ShowPanel()
     {
+        if (_showing) return; // already on its way (double hotkey press, tray + hotkey)
         if (_shown)
         {
+            if (_hiding) CancelHide();
             Activate();
             WindowStyler.BringToFront(_hwnd);
             return;
@@ -137,25 +141,17 @@ public sealed partial class PanelWindow : Window
 
         _host.Injector.CaptureTarget();
         _unloadTimer.Stop();
-        _hiding = false;
-        HideStoryboard.Stop();
-
-        if (SearchBox.Text.Length > 0)
+        _showing = true;
+        _showCancelled = false;
+        try
         {
-            SearchBox.Text = "";
-            ViewModel.SearchText = "";
-            _searchDebounce.Stop();
-            await ViewModel.ReloadAsync();
+            await PrepareListAsync();
         }
-        else if (!ViewModel.IsLoaded)
+        finally
         {
-            await ViewModel.ReloadAsync();
+            _showing = false;
         }
-        else
-        {
-            ViewModel.RefreshTimes();
-            OnItemsReset();
-        }
+        if (_showCancelled) return; // HideNow() ran while loading (e.g. Paste Stack opened)
 
         PositionOnCursorMonitor();
         Root.Opacity = 0;
@@ -173,6 +169,36 @@ public sealed partial class PanelWindow : Window
         });
     }
 
+    /// <summary>Every open starts from a clean search and the newest item.</summary>
+    private async Task PrepareListAsync()
+    {
+        if (SearchBox.Text.Length > 0)
+        {
+            SearchBox.Text = "";
+            ViewModel.SearchText = "";
+            _searchDebounce.Stop();
+            await ViewModel.ReloadAsync();
+        }
+        else if (!ViewModel.IsLoaded)
+        {
+            await ViewModel.ReloadAsync();
+        }
+        else
+        {
+            ViewModel.RefreshTimes();
+            OnItemsReset();
+        }
+    }
+
+    private void CancelHide()
+    {
+        _hiding = false;
+        _hideTimer.Stop();
+        HideStoryboard.Stop();
+        Root.Opacity = 1;
+        RootTranslate.Y = 0;
+    }
+
     /// <summary>Animated hide (Esc, click outside, hotkey).</summary>
     public void HidePanel()
     {
@@ -188,6 +214,7 @@ public sealed partial class PanelWindow : Window
     /// <summary>Immediate hide (before pasting, so focus can return to the target app quickly).</summary>
     public void HideNow()
     {
+        if (_showing) _showCancelled = true;
         _hiding = false;
         _hideTimer.Stop();
         PreviewWindow.Close(this);
@@ -687,10 +714,10 @@ public sealed partial class PanelWindow : Window
         panel.Children.Add(new TextBlock { Text = Loc.Get("Pinboard_DeleteBody"), TextWrapping = TextWrapping.Wrap, Foreground = ThemeManager.Brush("TextFillColorSecondaryBrush") });
         panel.Children.Add(delete);
         var flyout = new Flyout { Content = panel };
-        delete.Click += (_, _) =>
+        delete.Click += async (_, _) =>
         {
-            foreach (var hash in _host.Repository.DeletePinboard(board.Id)) _host.Blobs.DeleteAll(hash);
             flyout.Hide();
+            await Task.Run(() => _host.DeletePinboard(board.Id));
             ViewModel.ReloadTabs();
             _ = ViewModel.ReloadAsync();
         };
@@ -783,6 +810,87 @@ public sealed partial class PanelWindow : Window
         if (!_resizing) return;
         _resizing = false;
         _host.SaveSettings();
+    }
+
+    // ---------- search filters ----------
+
+    private static readonly (string Token, ClipKind Kind)[] TypeFilters =
+    [
+        ("type:text", ClipKind.Text), ("type:rich", ClipKind.RichText), ("type:image", ClipKind.Image),
+        ("type:link", ClipKind.Link), ("type:file", ClipKind.File), ("type:color", ClipKind.Color),
+    ];
+
+    private void FilterButton_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new MenuFlyout { Placement = FlyoutPlacementMode.BottomEdgeAlignedLeft };
+
+        var types = new MenuFlyoutSubItem { Text = Loc.Get("Filter_Type"), Icon = new FontIcon { Glyph = "\uE8EC" } };
+        foreach (var (token, kind) in TypeFilters) types.Items.Add(FilterItem(Loc.KindName(kind), token));
+        menu.Items.Add(types);
+
+        var apps = new MenuFlyoutSubItem { Text = Loc.Get("Filter_App"), Icon = new FontIcon { Glyph = "\uE71D" } };
+        foreach (var name in _host.Repository.RecentAppNames(12))
+        {
+            // Tokens cannot contain spaces; the first word is distinctive enough for a substring match.
+            var word = name.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+            if (word is not null) apps.Items.Add(FilterItem(name, "app:" + word));
+        }
+        if (apps.Items.Count > 0) menu.Items.Add(apps);
+
+        var dates = new MenuFlyoutSubItem { Text = Loc.Get("Filter_Date"), Icon = new FontIcon { Glyph = "\uE787" } };
+        dates.Items.Add(FilterItem(Loc.Get("Filter_Today"), "date:today"));
+        dates.Items.Add(FilterItem(Loc.Get("Filter_Yesterday"), "date:yesterday"));
+        dates.Items.Add(FilterItem(Loc.Get("Filter_7d"), "date:7d"));
+        dates.Items.Add(FilterItem(Loc.Get("Filter_30d"), "date:30d"));
+        menu.Items.Add(dates);
+
+        if (ViewModel.Tabs.Count > 1)
+        {
+            var boards = new MenuFlyoutSubItem { Text = Loc.Get("Filter_Pinboard"), Icon = new FontIcon { Glyph = "\uE718" } };
+            foreach (var tab in ViewModel.Tabs.Where(t => !t.IsHistory))
+            {
+                var item = new MenuFlyoutItem { Text = tab.Name };
+                item.Click += (_, _) => ViewModel.SelectTab(tab);
+                boards.Items.Add(item);
+            }
+            menu.Items.Add(boards);
+        }
+
+        if (SearchBox.Text.Contains(':'))
+        {
+            menu.Items.Add(new MenuFlyoutSeparator());
+            var clear = new MenuFlyoutItem { Text = Loc.Get("Filter_Clear"), Icon = new FontIcon { Glyph = "\uE894" } };
+            clear.Click += (_, _) => SetSearch(string.Join(' ', SearchBox.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries).Where(w => !IsFilterToken(w))));
+            menu.Items.Add(clear);
+        }
+
+        menu.ShowAt(FilterButton);
+    }
+
+    private MenuFlyoutItem FilterItem(string text, string token)
+    {
+        var item = new MenuFlyoutItem { Text = text };
+        item.Click += (_, _) =>
+        {
+            // One filter per key: replace an existing "type:"/"app:"/"date:" token.
+            var key = token[..(token.IndexOf(':') + 1)];
+            var words = SearchBox.Text.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Where(w => !w.StartsWith(key, StringComparison.OrdinalIgnoreCase))
+                .Prepend(token);
+            SetSearch(string.Join(' ', words) + " ");
+        };
+        return item;
+    }
+
+    private static bool IsFilterToken(string word) =>
+        word.StartsWith("type:", StringComparison.OrdinalIgnoreCase) || word.StartsWith("app:", StringComparison.OrdinalIgnoreCase)
+        || word.StartsWith("date:", StringComparison.OrdinalIgnoreCase) || word.StartsWith("pin:", StringComparison.OrdinalIgnoreCase);
+
+    private void SetSearch(string text)
+    {
+        SearchBox.Text = text;
+        SearchBox.Focus(FocusState.Programmatic);
+        SearchBox.SelectionStart = SearchBox.Text.Length;
     }
 
     // ---------- top bar ----------

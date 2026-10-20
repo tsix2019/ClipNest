@@ -105,10 +105,12 @@ public sealed unsafe class TrayIcon : IDisposable
         var evt = (uint)(lParam & 0xFFFF);
         switch (evt)
         {
-            case NIN_SELECT or NIN_KEYSELECT or WM_LBUTTONUP:
+            // With NOTIFYICON_VERSION_4 the shell also sends WM_LBUTTONUP/WM_RBUTTONUP for the same click;
+            // handling only the v4 messages avoids toggling (or opening the menu) twice.
+            case NIN_SELECT or NIN_KEYSELECT:
                 Clicked?.Invoke();
                 break;
-            case WM_CONTEXTMENU or WM_RBUTTONUP:
+            case WM_CONTEXTMENU:
                 ShowMenu((short)(wParam & 0xFFFF), (short)((wParam >> 16) & 0xFFFF));
                 break;
         }

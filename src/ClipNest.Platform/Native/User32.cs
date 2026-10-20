@@ -228,6 +228,13 @@ internal static unsafe partial class User32
     [LibraryImport(Lib)] public static partial nint GetDC(nint hwnd);
     [LibraryImport(Lib)] public static partial int ReleaseDC(nint hwnd, nint hdc);
 
+    public const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
+    public const uint WINEVENT_OUTOFCONTEXT = 0x0000;
+
+    [LibraryImport(Lib)] public static partial nint SetWinEventHook(uint eventMin, uint eventMax, nint hmod, delegate* unmanaged<nint, uint, nint, int, int, uint, uint, void> fn, uint processId, uint threadId, uint flags);
+    [LibraryImport(Lib)] [return: MarshalAs(UnmanagedType.Bool)] public static partial bool UnhookWinEvent(nint hook);
+    [LibraryImport(Lib)] public static partial int GetClassNameW(nint hwnd, char* name, int max);
+
     [LibraryImport(Lib, SetLastError = true)] public static partial nint SetWindowsHookExW(int idHook, delegate* unmanaged<int, nint, nint, nint> fn, nint hMod, uint threadId);
     [LibraryImport(Lib)] [return: MarshalAs(UnmanagedType.Bool)] public static partial bool UnhookWindowsHookEx(nint hook);
     [LibraryImport(Lib)] public static partial nint CallNextHookEx(nint hook, int code, nint wParam, nint lParam);

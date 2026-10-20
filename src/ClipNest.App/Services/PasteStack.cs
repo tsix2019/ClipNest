@@ -16,6 +16,9 @@ public sealed class PasteStack : IDisposable
     private KeyboardHook? _hook;
     private StackWindow? _window;
     private bool _newestFirst;
+    private readonly SemaphoreSlim _writeGate = new(1, 1);
+    private int _primeVersion;
+    private bool _awaitingPrime;
 
     public PasteStack(AppHost host)
     {
@@ -94,20 +97,45 @@ public sealed class PasteStack : IDisposable
         Thread.Sleep(120);
         _host.UI.TryEnqueue(() =>
         {
-            if (!IsOpen || Items.Count == 0) return;
+            // A second Ctrl+V before the next item reached the clipboard pasted the same item again:
+            // do not advance twice, or an item would be skipped.
+            if (!IsOpen || Items.Count == 0 || _awaitingPrime) return;
             Items.RemoveAt(0);
             PrimeClipboard();
         });
     }
 
+    /// <summary>
+    /// Puts the current head on the clipboard. Writes are serialized and only the latest request is
+    /// written, so quick successive changes can never leave an older item on the clipboard.
+    /// </summary>
     private void PrimeClipboard()
     {
         if (Items.Count == 0) return;
         var head = Items[0];
-        _ = Task.Run(() =>
+        var version = ++_primeVersion;
+        _awaitingPrime = true;
+        _ = Task.Run(async () =>
         {
-            var payload = _host.BuildPayload([head]);
-            _host.Writer.Write(payload, _host.Settings.AlwaysPlainText);
+            await _writeGate.WaitAsync();
+            try
+            {
+                if (version != Volatile.Read(ref _primeVersion)) return; // superseded
+                var payload = _host.BuildPayload([head]);
+                _host.Writer.Write(payload, _host.Settings.AlwaysPlainText);
+            }
+            catch (Exception e)
+            {
+                Platform.Log.Error("Paste Stack write", e);
+            }
+            finally
+            {
+                _writeGate.Release();
+                _host.UI.TryEnqueue(() =>
+                {
+                    if (version == _primeVersion) _awaitingPrime = false;
+                });
+            }
         });
     }
 

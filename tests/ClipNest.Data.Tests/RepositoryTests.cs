@@ -200,7 +200,7 @@ public sealed class RepositoryTests : IDisposable
     }
 
     [Fact]
-    public void Delete_and_restore_keeps_id_and_search()
+    public void Delete_and_restore_is_searchable_again()
     {
         var a = _t.AddText("restore me");
         Repo.Delete(a.Id);
@@ -209,6 +209,31 @@ public sealed class RepositoryTests : IDisposable
         Repo.Restore(a);
         Assert.Equal("restore me", Repo.Get(a.Id)!.Text);
         Assert.Single(Search("restore"));
+    }
+
+    [Fact]
+    public void Restore_does_not_clobber_item_that_reused_the_rowid()
+    {
+        var x = _t.AddText("first item");
+        Repo.Delete(x.Id);
+        var y = _t.AddText("second item"); // SQLite hands out the freed rowid again
+        Repo.Restore(x);
+        Assert.NotEqual(x.Id, y.Id);
+        Assert.Equal("second item", Repo.Get(y.Id)!.Text);
+        Assert.Equal("first item", Repo.Get(x.Id)!.Text);
+        Assert.Single(Search("second"));
+        Assert.Single(Search("first"));
+    }
+
+    [Fact]
+    public void Restore_into_deleted_pinboard_falls_back_to_history()
+    {
+        var pb = Repo.AddPinboard("Gone", 0);
+        var a = _t.AddText("pinned", pinboard: pb);
+        Repo.Delete(a.Id);
+        Repo.DeletePinboard(pb);
+        Repo.Restore(a);
+        Assert.Null(Repo.Get(a.Id)!.PinboardId);
     }
 
     [Fact]

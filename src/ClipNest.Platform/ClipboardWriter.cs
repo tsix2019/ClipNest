@@ -22,6 +22,9 @@ public sealed unsafe class ClipboardWriter(MessageWindow owner, ImageProcessor i
     /// <summary>Places the payload on the clipboard. Returns false if the clipboard could not be opened.</summary>
     public bool Write(ClipboardPayload payload, bool plainText)
     {
+        if (payload.Text is null && payload.Png is null && payload.Files is not { Count: > 0 } && payload.Rtf is null && payload.Html is null)
+            return false; // nothing to put there (e.g. image blob missing): keep the current clipboard
+
         // Prepare everything (including PNG decoding) before taking the clipboard lock.
         byte[]? dib = null;
         if (!plainText && payload.Png is { } png)

@@ -87,7 +87,17 @@ public sealed class ClipIngestor(
                 break;
         }
 
-        repository.Insert(item);
+        try
+        {
+            repository.Insert(item);
+        }
+        catch (Sqlite.SqliteException e) when (e.Code == 19 && repository.FindByHash(hash) is { } raced)
+        {
+            // Same content was stored concurrently (undo, edit): treat as a re-copy instead of losing it.
+            repository.Touch(raced.Id, now, snapshot.SourceAppPath, appName);
+            raced.CreatedAt = now;
+            return new IngestResult(raced, false);
+        }
         return new IngestResult(item, true);
     }
 

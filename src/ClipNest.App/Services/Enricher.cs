@@ -74,15 +74,14 @@ public sealed class Enricher : IDisposable
             if (png is null || !_ocr.Value.IsAvailable) return;
             var text = await _ocr.Value.RecognizeAsync(png);
             _host.Repository.SetOcrText(current.Id, text); // "" marks "done, nothing found"
-            current.OcrText = text;
-            _host.NotifyItemChanged(current);
+            // Re-read: the user may have renamed or reused the item while OCR ran.
+            if (_host.Repository.Get(current.Id) is { } fresh) _host.NotifyItemChanged(fresh);
         }
         else if (current.Kind == ClipKind.Link && current.LinkTitle is null && _host.Settings.FetchLinkTitles && current.Text is { } url)
         {
             var title = await _links.Value.FetchAsync(url, _stop.Token);
             _host.Repository.SetLinkTitle(current.Id, title ?? "");
-            current.LinkTitle = title ?? "";
-            if (title is not null) _host.NotifyItemChanged(current);
+            if (title is not null && _host.Repository.Get(current.Id) is { } fresh) _host.NotifyItemChanged(fresh);
         }
     }
 

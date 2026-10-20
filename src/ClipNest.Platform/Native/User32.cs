@@ -192,6 +192,7 @@ internal static unsafe partial class User32
     [LibraryImport(Lib)] public static partial nint GetForegroundWindow();
     [LibraryImport(Lib)] [return: MarshalAs(UnmanagedType.Bool)] public static partial bool SetForegroundWindow(nint hwnd);
     [LibraryImport(Lib)] [return: MarshalAs(UnmanagedType.Bool)] public static partial bool BringWindowToTop(nint hwnd);
+    [LibraryImport(Lib)] [return: MarshalAs(UnmanagedType.Bool)] public static partial bool AllowSetForegroundWindow(uint processId);
     [LibraryImport(Lib)] public static partial uint GetWindowThreadProcessId(nint hwnd, out uint processId);
     [LibraryImport(Lib)] [return: MarshalAs(UnmanagedType.Bool)] public static partial bool AttachThreadInput(uint idAttach, uint idAttachTo, [MarshalAs(UnmanagedType.Bool)] bool attach);
     [LibraryImport(Lib)] [return: MarshalAs(UnmanagedType.Bool)] public static partial bool IsWindow(nint hwnd);

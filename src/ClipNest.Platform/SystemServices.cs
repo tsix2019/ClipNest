@@ -47,7 +47,11 @@ public sealed class SingleInstance : IDisposable
     public static void SignalExisting(bool toggle = false)
     {
         var hwnd = FindWindowW(MessageWindow.ClassName, null);
-        if (hwnd != 0) PostMessageW(hwnd, ActivateMessage, toggle ? 1 : 0, 0);
+        if (hwnd == 0) return;
+        // We were just launched by the user, so we may set the foreground: hand that right to the running instance.
+        GetWindowThreadProcessId(hwnd, out var pid);
+        AllowSetForegroundWindow(pid);
+        PostMessageW(hwnd, ActivateMessage, toggle ? 1 : 0, 0);
     }
 
     public void Dispose()

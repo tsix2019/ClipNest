@@ -10,5 +10,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\ClipNest.Core\ClipNest.Core.csproj" />
+    <InternalsVisibleTo Include="ClipNest.Platform.Tests" />
   </ItemGroup>
 </Project>

@@ -26,6 +26,8 @@ jobs:
         run: dotnet run --project tests/ClipNest.Core.Tests -c Release
       - name: Data tests
         run: dotnet run --project tests/ClipNest.Data.Tests -c Release
+      - name: Platform tests
+        run: dotnet run --project tests/ClipNest.Platform.Tests -c Release
 
   publish:
     needs: test

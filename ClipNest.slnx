@@ -12,5 +12,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/ClipNest.Core.Tests/ClipNest.Core.Tests.csproj" />
     <Project Path="tests/ClipNest.Data.Tests/ClipNest.Data.Tests.csproj" />
+    <Project Path="tests/ClipNest.Platform.Tests/ClipNest.Platform.Tests.csproj" />
   </Folder>
 </Solution>

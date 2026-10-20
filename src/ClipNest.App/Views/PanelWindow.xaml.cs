@@ -15,6 +15,8 @@ using Windows.Storage;
 using Windows.System;
 using Windows.UI.Core;
 using WinRT.Interop;
+using DispatcherQueueTimer = Microsoft.UI.Dispatching.DispatcherQueueTimer;
+using WindowActivatedEventArgs = Microsoft.UI.Xaml.WindowActivatedEventArgs;
 
 namespace ClipNest.App.Views;
 
@@ -50,7 +52,7 @@ public sealed partial class PanelWindow : Window
         ConfigureWindow();
         ThemeManager.Register(this);
 
-        var ui = DispatcherQueue.GetForCurrentThread();
+        var ui = DispatcherQueue;
         _searchDebounce = ui.CreateTimer();
         _searchDebounce.Interval = TimeSpan.FromMilliseconds(120);
         _searchDebounce.IsRepeating = false;
@@ -77,8 +79,10 @@ public sealed partial class PanelWindow : Window
         host.PauseChanged += UpdatePausedPill;
         ViewModel.ItemsReset += OnItemsReset;
         CardList.Loaded += (_, _) => HookScroller();
-        CardList.SelectionChanged += (_, _) =>
+        CardList.SelectionChanged += (_, e) =>
         {
+            foreach (var added in e.AddedItems.OfType<ClipCardViewModel>()) added.IsSelected = true;
+            foreach (var removed in e.RemovedItems.OfType<ClipCardViewModel>()) removed.IsSelected = false;
             if (PreviewWindow.IsOpen && CardList.SelectedItem is ClipCardViewModel card) PreviewWindow.Follow(card.Item);
         };
         UpdatePausedPill();
@@ -152,7 +156,12 @@ public sealed partial class PanelWindow : Window
         WindowStyler.BringToFront(_hwnd);
         ShowStoryboard.Begin();
         _clockTimer.Start();
-        FocusSelectedCard();
+        // The list may realize its containers only now (first show): select + focus once layout ran.
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (CardList.SelectedIndex < 0 && ViewModel.Items.Count > 0) CardList.SelectedIndex = 0;
+            FocusSelectedCard();
+        });
     }
 
     /// <summary>Animated hide (Esc, click outside, hotkey).</summary>

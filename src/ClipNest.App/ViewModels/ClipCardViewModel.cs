@@ -19,6 +19,7 @@ public sealed partial class ClipCardViewModel : ObservableObject
     private int _quickIndex;
     private bool _showBadge;
     private string _timeText = "";
+    private bool _isSelected;
 
     public ClipCardViewModel(ClipItem item, AppHost host, CardMetrics metrics)
     {
@@ -196,6 +197,17 @@ public sealed partial class ClipCardViewModel : ObservableObject
 
     public string BadgeText => _quickIndex.ToString();
     public Visibility BadgeVisibility => _showBadge && _quickIndex is >= 1 and <= 9 ? Visibility.Visible : Visibility.Collapsed;
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (SetProperty(ref _isSelected, value)) OnPropertyChanged(nameof(SelectionVisibility));
+        }
+    }
+
+    public Visibility SelectionVisibility => _isSelected ? Visibility.Visible : Visibility.Collapsed;
 
     // ---------- updates ----------
 

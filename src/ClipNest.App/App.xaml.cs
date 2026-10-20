@@ -5,12 +5,10 @@ namespace ClipNest.App;
 
 public partial class App : Application
 {
-    private readonly string[] _args;
     private AppHost? _host;
 
-    public App(string[] args)
+    public App()
     {
-        _args = args;
         InitializeComponent();
         UnhandledException += (_, e) =>
         {
@@ -28,7 +26,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _host = new AppHost(autostart: _args.Contains(StartupRegistration.AutostartArgument));
+        _host = new AppHost(autostart: Environment.GetCommandLineArgs().Contains(StartupRegistration.AutostartArgument));
         _host.Start();
     }
 }

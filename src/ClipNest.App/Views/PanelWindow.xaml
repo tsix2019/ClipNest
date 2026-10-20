@@ -38,6 +38,9 @@
                                Text="{x:Bind MetaText, Mode=OneWay}"
                                Visibility="{x:Bind Metrics.FooterVisibility, Mode=OneWay}"
                                Style="{StaticResource CardMetaStyle}" />
+                    <Border Grid.RowSpan="3" Margin="-1" CornerRadius="12" BorderThickness="2.5" IsHitTestVisible="False"
+                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                            Visibility="{x:Bind SelectionVisibility, Mode=OneWay}" />
                     <views:QuickBadge Grid.RowSpan="3" Item="{x:Bind}" />
                 </Grid>
             </DataTemplate>
@@ -62,6 +65,9 @@
                                Text="{x:Bind MetaText, Mode=OneWay}"
                                Visibility="{x:Bind Metrics.FooterVisibility, Mode=OneWay}"
                                Style="{StaticResource CardMetaStyle}" />
+                    <Border Grid.RowSpan="3" Margin="-1" CornerRadius="12" BorderThickness="2.5" IsHitTestVisible="False"
+                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                            Visibility="{x:Bind SelectionVisibility, Mode=OneWay}" />
                     <views:QuickBadge Grid.RowSpan="3" Item="{x:Bind}" />
                 </Grid>
             </DataTemplate>
@@ -91,6 +97,9 @@
                                Text="{x:Bind MetaText, Mode=OneWay}"
                                Visibility="{x:Bind Metrics.FooterVisibility, Mode=OneWay}"
                                Style="{StaticResource CardMetaStyle}" />
+                    <Border Grid.RowSpan="3" Margin="-1" CornerRadius="12" BorderThickness="2.5" IsHitTestVisible="False"
+                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                            Visibility="{x:Bind SelectionVisibility, Mode=OneWay}" />
                     <views:QuickBadge Grid.RowSpan="3" Item="{x:Bind}" />
                 </Grid>
             </DataTemplate>
@@ -115,6 +124,9 @@
                                Text="{x:Bind MetaText}"
                                Visibility="{x:Bind Metrics.FooterVisibility, Mode=OneWay}"
                                Style="{StaticResource CardMetaStyle}" />
+                    <Border Grid.RowSpan="3" Margin="-1" CornerRadius="12" BorderThickness="2.5" IsHitTestVisible="False"
+                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                            Visibility="{x:Bind SelectionVisibility, Mode=OneWay}" />
                     <views:QuickBadge Grid.RowSpan="3" Item="{x:Bind}" />
                 </Grid>
             </DataTemplate>
@@ -143,6 +155,9 @@
                                Text="{x:Bind MetaText}"
                                Visibility="{x:Bind Metrics.FooterVisibility, Mode=OneWay}"
                                Style="{StaticResource CardMetaStyle}" />
+                    <Border Grid.RowSpan="3" Margin="-1" CornerRadius="12" BorderThickness="2.5" IsHitTestVisible="False"
+                            BorderBrush="{ThemeResource AccentFillColorDefaultBrush}"
+                            Visibility="{x:Bind SelectionVisibility, Mode=OneWay}" />
                     <views:QuickBadge Grid.RowSpan="3" Item="{x:Bind}" />
                 </Grid>
             </DataTemplate>

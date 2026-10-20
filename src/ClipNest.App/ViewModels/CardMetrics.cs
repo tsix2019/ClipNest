@@ -6,7 +6,7 @@ namespace ClipNest.App.ViewModels;
 public sealed partial class CardMetrics : ObservableObject
 {
     public const double TopBarHeight = 52;
-    public const double VerticalPadding = 22;
+    public const double VerticalPadding = 32; // list padding (8 + 14) + selection ring room (2 × 3) + slack
     public const double CompactThreshold = 260;
 
     private double _width = 236;

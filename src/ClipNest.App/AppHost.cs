@@ -32,7 +32,10 @@ public sealed class AppHost : IDisposable
     public AppHost(bool autostart)
     {
         _autostart = autostart;
-        DataDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClipNest");
+        // CLIPNEST_DATA lets tests and portable setups use another folder.
+        DataDirectory = Environment.GetEnvironmentVariable("CLIPNEST_DATA") is { Length: > 0 } custom
+            ? custom
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClipNest");
     }
 
     public string DataDirectory { get; }
@@ -129,6 +132,11 @@ public sealed class AppHost : IDisposable
         backfill.IsRepeating = false;
         backfill.Tick += (_, _) => Enricher.Backfill();
         backfill.Start();
+
+#if DEBUG
+        if (Environment.GetEnvironmentVariable("CLIPNEST_SNAPSHOT") is { Length: > 0 } snapshotDir)
+            DevTools.RunSnapshot(this, snapshotDir);
+#endif
     }
 
     /// <summary>Registers hotkeys from settings; returns the gestures that could not be registered.</summary>
@@ -422,6 +430,8 @@ public sealed class AppHost : IDisposable
         }
         _settingsWindow.Activate();
     }
+
+    internal SettingsWindow? SettingsWindowForTests => _settingsWindow;
 
     public void OpenDataFolder() =>
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("explorer.exe", $"\"{DataDirectory}\"") { UseShellExecute = true });

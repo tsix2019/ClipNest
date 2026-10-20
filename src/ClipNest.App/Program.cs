@@ -9,7 +9,7 @@ public static class Program
     private static SingleInstance? _instance;
 
     [STAThread]
-    private static int Main(string[] args)
+    private static int Main()
     {
         _instance = SingleInstance.TryAcquire("ClipNest.SingleInstance");
         if (_instance is null)
@@ -24,7 +24,7 @@ public static class Program
         {
             var context = new DispatcherQueueSynchronizationContext(DispatcherQueue.GetForCurrentThread());
             SynchronizationContext.SetSynchronizationContext(context);
-            _ = new App(args);
+            new App();
         });
 
         _instance.Dispose();

@@ -32,10 +32,12 @@ public sealed partial class PinboardTabViewModel(PanelViewModel owner, Pinboard?
     }
 
     public Microsoft.UI.Xaml.Media.Brush Background => IsSelected
-        ? (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["TabSelectedBrush"]
+        ? ThemeManager.Brush("TabSelectedBrush")
         : ClipCardViewModel.Brush(0x00000000);
 
     public void Select() => owner.SelectTab(this);
+
+    public void RefreshTheme() => OnPropertyChanged(nameof(Background));
 
     public void Update(Pinboard pinboard)
     {
@@ -66,6 +68,10 @@ public sealed partial class PanelViewModel : ObservableObject
         _selectedTab = new PinboardTabViewModel(this, null) { IsSelected = true };
         Tabs.Add(_selectedTab);
         ReloadTabs();
+        ThemeManager.Changed += () =>
+        {
+            foreach (var tab in Tabs) tab.RefreshTheme();
+        };
     }
 
     public ObservableCollection<ClipCardViewModel> Items { get; } = [];

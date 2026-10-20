@@ -77,10 +77,12 @@ public sealed unsafe class SqliteConnection : IDisposable
         {
             stmt.Bind(args);
             if (!stmt.Step() || stmt.IsNull(0)) return default;
-            object value = typeof(T) == typeof(string) ? stmt.GetString(0)!
-                : typeof(T) == typeof(double) ? stmt.GetDouble(0)
-                : typeof(T) == typeof(int) ? stmt.GetInt32(0)
-                : stmt.GetInt64(0);
+            // Each branch is boxed separately: a shared conditional type would widen long to double.
+            object value;
+            if (typeof(T) == typeof(string)) value = stmt.GetString(0)!;
+            else if (typeof(T) == typeof(double)) value = stmt.GetDouble(0);
+            else if (typeof(T) == typeof(int)) value = stmt.GetInt32(0);
+            else value = stmt.GetInt64(0);
             return (T)value;
         }
         finally

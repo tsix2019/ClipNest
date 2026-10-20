@@ -54,7 +54,7 @@ public sealed partial class EditWindow : Window
         var notice = new TextBlock
         {
             Text = item.Kind == ClipKind.RichText ? Loc.Get("Edit_RichNotice") : "",
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+            Foreground = ThemeManager.Brush("TextFillColorSecondaryBrush"),
             VerticalAlignment = VerticalAlignment.Center,
             TextWrapping = TextWrapping.Wrap,
         };
@@ -80,6 +80,7 @@ public sealed partial class EditWindow : Window
         root.Children.Add(buttons);
         Content = root;
         SetTitleBar(title);
+        ThemeManager.Register(this);
 
         var (work, scale) = DisplayHelper.GetCursorMonitor();
         var w = (int)(640 * scale);

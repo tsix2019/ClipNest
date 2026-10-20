@@ -79,6 +79,7 @@ public sealed class AppHost : IDisposable
         SettingsStore = new SettingsStore(Path.Combine(DataDirectory, "settings.json"));
         Settings = SettingsStore.Load();
         Loc.Initialize(Settings.Language);
+        ThemeManager.Initialize(Settings.Theme);
 
         Repository = ClipRepository.Open(Path.Combine(DataDirectory, "clipnest.db"), out var recovered);
         Blobs = new BlobStore(DataDirectory);

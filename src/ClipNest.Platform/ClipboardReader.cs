@@ -193,7 +193,7 @@ public sealed unsafe class ClipboardReader(ImageProcessor images, Func<bool> ign
         var hbm = GetClipboardData(CF_BITMAP);
         if (hbm == 0) return null;
 
-        Gdi32.BITMAP bm;
+        Gdi32.BITMAP bm = default;
         if (Gdi32.GetObjectW(hbm, sizeof(Gdi32.BITMAP), &bm) == 0) return null;
         width = bm.bmWidth;
         height = Math.Abs(bm.bmHeight);

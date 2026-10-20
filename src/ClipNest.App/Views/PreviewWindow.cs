@@ -54,6 +54,7 @@ public sealed partial class PreviewWindow : Window
         Grid.SetRow(_content, 1);
         root.Children.Add(_content);
         Content = root;
+        ThemeManager.Register(this);
     }
 
     public static bool IsOpen => _current is not null;
@@ -138,7 +139,7 @@ public sealed partial class PreviewWindow : Window
                 var panel = new StackPanel { Spacing = 8 };
                 if (!string.IsNullOrEmpty(item.LinkTitle))
                     panel.Children.Add(new TextBlock { Text = item.LinkTitle, FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
-                panel.Children.Add(new TextBlock { Text = item.Text, FontSize = 15, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"] });
+                panel.Children.Add(new TextBlock { Text = item.Text, FontSize = 15, TextWrapping = TextWrapping.Wrap, Foreground = ThemeManager.Brush("AccentTextFillColorPrimaryBrush") });
                 return Scroll(panel);
             }
             default:

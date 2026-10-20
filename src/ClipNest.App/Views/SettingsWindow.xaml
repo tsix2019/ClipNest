@@ -51,6 +51,10 @@
                             <ComboBox x:Name="LanguageBox" MinWidth="180" SelectionChanged="LanguageBox_SelectionChanged" />
                         </views:SettingRow>
 
+                        <views:SettingRow Header="{l:Tr Key=Settings_Theme}" Glyph="&#xE790;">
+                            <ComboBox x:Name="ThemeBox" MinWidth="180" SelectionChanged="ThemeBox_SelectionChanged" />
+                        </views:SettingRow>
+
                         <views:SettingRow Header="{l:Tr Key=Settings_Startup}" Glyph="&#xE7E8;">
                             <ToggleSwitch x:Name="StartupToggle" Toggled="StartupToggle_Toggled" OnContent="" OffContent="" MinWidth="0" />
                         </views:SettingRow>
@@ -85,10 +89,10 @@
                         <TextBlock Text="{l:Tr Key=Settings_Shortcuts}" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,12" />
 
                         <views:SettingRow Header="{l:Tr Key=Settings_PanelHotkey}" Description="{l:Tr Key=Settings_HotkeyHint}" Glyph="&#xE8C8;">
-                            <views:HotkeyBox x:Name="PanelHotkeyBox" GestureChanged="PanelHotkeyBox_GestureChanged" />
+                            <views:HotkeyBox x:Name="PanelHotkeyBox" />
                         </views:SettingRow>
                         <views:SettingRow Header="{l:Tr Key=Settings_StackHotkey}" Description="{l:Tr Key=Settings_HotkeyHint}" Glyph="&#xE8FD;">
-                            <views:HotkeyBox x:Name="StackHotkeyBox" GestureChanged="StackHotkeyBox_GestureChanged" />
+                            <views:HotkeyBox x:Name="StackHotkeyBox" />
                         </views:SettingRow>
 
                         <InfoBar x:Name="HotkeyError" Severity="Error" IsClosable="False" Message="{l:Tr Key=Settings_HotkeyTaken}" />

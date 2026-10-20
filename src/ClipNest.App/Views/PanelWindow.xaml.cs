@@ -48,6 +48,7 @@ public sealed partial class PanelWindow : Window
         InitializeComponent();
         _hwnd = WindowNative.GetWindowHandle(this);
         ConfigureWindow();
+        ThemeManager.Register(this);
 
         var ui = DispatcherQueue.GetForCurrentThread();
         _searchDebounce = ui.CreateTimer();
@@ -613,7 +614,7 @@ public sealed partial class PanelWindow : Window
         {
             for (var i = 0; i < swatchButtons.Count; i++)
                 swatchButtons[i].BorderBrush = i == colorIndex
-                    ? (Brush)Application.Current.Resources["TextFillColorPrimaryBrush"]
+                    ? ThemeManager.Brush("TextFillColorPrimaryBrush")
                     : ClipCardViewModel.Brush(0x00000000);
         }
         UpdateSwatches();
@@ -668,7 +669,7 @@ public sealed partial class PanelWindow : Window
         };
         var panel = new StackPanel { Spacing = 10, MaxWidth = 280 };
         panel.Children.Add(new TextBlock { Text = Loc.Format("Pinboard_DeleteTitle", board.Name), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
-        panel.Children.Add(new TextBlock { Text = Loc.Get("Pinboard_DeleteBody"), TextWrapping = TextWrapping.Wrap, Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] });
+        panel.Children.Add(new TextBlock { Text = Loc.Get("Pinboard_DeleteBody"), TextWrapping = TextWrapping.Wrap, Foreground = ThemeManager.Brush("TextFillColorSecondaryBrush") });
         panel.Children.Add(delete);
         var flyout = new Flyout { Content = panel };
         delete.Click += (_, _) =>
@@ -746,11 +747,7 @@ public sealed partial class PanelWindow : Window
 
     private void ResizeGrip_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
-        if (!_resizing)
-        {
-            ProtectedCursor ??= InputSystemCursor.Create(InputSystemCursorShape.SizeNorthSouth);
-            return;
-        }
+        if (!_resizing) return;
         var dy = (DisplayHelper.CursorPosition().Y - _resizeStartY) / _scale;
         var height = Math.Clamp(Math.Round(_resizeStartHeight - dy), MinPanelHeight, MaxPanelHeight);
         if (Math.Abs(height - _host.Settings.PanelHeight) < 1) return;

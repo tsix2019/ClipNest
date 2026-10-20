@@ -75,8 +75,8 @@ public sealed unsafe class AppInfoProvider(string iconDirectory, IClipRepository
     /// <summary>Extracts the exe's main icon as top-down BGRA pixels of <paramref name="size"/>².</summary>
     internal static byte[]? ExtractIconPixels(string exePath, int size)
     {
-        nint hIcon;
-        uint id;
+        nint hIcon = 0;
+        uint id = 0;
         if (User32.PrivateExtractIconsW(exePath, 0, size, size, &hIcon, &id, 1, 0) == 0 || hIcon == 0) return null;
         try
         {

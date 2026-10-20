@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using ClipNest.Platform.Native;
 using static ClipNest.Platform.Native.User32;
@@ -53,7 +52,7 @@ public sealed unsafe class MessageWindow : IDisposable
 
     public void RemoveHandler(MessageHandler handler) => _handlers.Remove(handler);
 
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    [UnmanagedCallersOnly]
     private static nint WndProc(nint hwnd, uint msg, nint wParam, nint lParam)
     {
         if (Windows.TryGetValue(hwnd, out var window))

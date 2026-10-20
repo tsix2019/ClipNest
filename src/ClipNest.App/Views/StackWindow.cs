@@ -75,6 +75,9 @@ public sealed partial class StackWindow : Window
         Grid.SetRow(scroll, 1);
         root.Children.Add(scroll);
         Content = root;
+        ThemeManager.Register(this);
+        ThemeManager.Changed += Rebuild;
+        Closed += (_, _) => ThemeManager.Changed -= Rebuild;
 
         _stack.Items.CollectionChanged += OnItemsChanged;
         Closed += (_, _) => _stack.Items.CollectionChanged -= OnItemsChanged;
@@ -117,7 +120,7 @@ public sealed partial class StackWindow : Window
             ColumnSpacing = 10,
             Padding = new Thickness(10, 8, 6, 8),
             CornerRadius = new CornerRadius(8),
-            Background = (Brush)Application.Current.Resources[isNext ? "TabSelectedBrush" : "TabHoverBrush"],
+            Background = ThemeManager.Brush(isNext ? "TabSelectedBrush" : "TabHoverBrush"),
         };
         row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(4) });
         row.ColumnDefinitions.Add(new ColumnDefinition());

@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using ClipNest.Platform.Native;
 using static ClipNest.Platform.Native.User32;
@@ -25,7 +24,7 @@ public sealed unsafe class KeyboardHook : IDisposable
         if (_hook == 0) Log.Warn($"SetWindowsHookEx failed: {Marshal.GetLastPInvokeError()}");
     }
 
-    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvStdcall)])]
+    [UnmanagedCallersOnly]
     private static nint HookProc(int code, nint wParam, nint lParam)
     {
         var self = _active;

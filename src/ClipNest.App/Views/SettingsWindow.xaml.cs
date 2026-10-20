@@ -33,6 +33,8 @@ public sealed partial class SettingsWindow : Window
         var h = (int)(640 * scale);
         AppWindow.MoveAndResize(new RectInt32(work.X + (work.Width - w) / 2, work.Y + (work.Height - h) / 2, w, h));
 
+        PanelHotkeyBox.GestureChanged += PanelHotkeyBox_GestureChanged;
+        StackHotkeyBox.GestureChanged += StackHotkeyBox_GestureChanged;
         HotkeyBox.RecordingChanged += OnHotkeyRecording;
         host.PauseChanged += SyncPause;
         Closed += (_, _) =>
@@ -41,6 +43,7 @@ public sealed partial class SettingsWindow : Window
             host.PauseChanged -= SyncPause;
         };
 
+        ThemeManager.Register(this);
         LoadValues();
         _loading = false;
     }
@@ -53,6 +56,11 @@ public sealed partial class SettingsWindow : Window
         LanguageBox.Items.Add("English");
         LanguageBox.Items.Add("简体中文");
         LanguageBox.SelectedIndex = s.Language switch { "en-US" => 1, "zh-CN" => 2, _ => 0 };
+
+        ThemeBox.Items.Add(Loc.Get("Theme_System"));
+        ThemeBox.Items.Add(Loc.Get("Theme_Light"));
+        ThemeBox.Items.Add(Loc.Get("Theme_Dark"));
+        ThemeBox.SelectedIndex = ThemeManager.Normalize(s.Theme) switch { ThemeManager.Light => 1, ThemeManager.Dark => 2, _ => 0 };
 
         StartupToggle.IsOn = s.LaunchAtStartup;
 
@@ -102,6 +110,14 @@ public sealed partial class SettingsWindow : Window
         if (_loading) return;
         _host.Settings.Language = LanguageBox.SelectedIndex switch { 1 => "en-US", 2 => "zh-CN", _ => "system" };
         Save();
+    }
+
+    private void ThemeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading) return;
+        _host.Settings.Theme = ThemeBox.SelectedIndex switch { 1 => ThemeManager.Light, 2 => ThemeManager.Dark, _ => ThemeManager.System };
+        Save();
+        ThemeManager.SetMode(_host.Settings.Theme);
     }
 
     private void StartupToggle_Toggled(object sender, RoutedEventArgs e)
@@ -286,7 +302,7 @@ public sealed partial class SettingsWindow : Window
             {
                 Text = path,
                 Style = (Style)Application.Current.Resources["CaptionTextBlockStyle"],
-                Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"],
+                Foreground = ThemeManager.Brush("TextFillColorSecondaryBrush"),
                 TextTrimming = TextTrimming.CharacterEllipsis,
             });
             Grid.SetColumn(text, 1);

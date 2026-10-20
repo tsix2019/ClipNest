@@ -183,7 +183,7 @@
         </Grid.RowDefinitions>
 
         <!-- Top-edge resize grip -->
-        <Border x:Name="ResizeGrip" Height="8" VerticalAlignment="Top" Background="Transparent"
+        <views:SizingGrip x:Name="ResizeGrip" Height="8" VerticalAlignment="Top" Background="Transparent"
                 PointerPressed="ResizeGrip_PointerPressed"
                 PointerMoved="ResizeGrip_PointerMoved"
                 PointerReleased="ResizeGrip_PointerReleased"
@@ -191,7 +191,7 @@
                 Canvas.ZIndex="10">
             <Border Width="36" Height="4" CornerRadius="2" Margin="0,3,0,0" VerticalAlignment="Top"
                     Background="{ThemeResource ControlStrongStrokeColorDefaultBrush}" Opacity="0.5" />
-        </Border>
+        </views:SizingGrip>
 
         <!-- ===== Top bar ===== -->
         <Grid Grid.Row="0" Padding="18,10,12,2" ColumnSpacing="10">

@@ -18,8 +18,8 @@ jobs:
   test:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
       - name: Core tests
@@ -41,8 +41,8 @@ jobs:
           - rid: win-arm64
             platform: ARM64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
 
@@ -80,7 +80,7 @@ jobs:
           if (-not (Test-Path $done) -or -not (Select-String -Path $done -Pattern '^ok' -Quiet)) { Stop-Process -Id $p.Id -ErrorAction SilentlyContinue; exit 1 }
           Copy-Item -Recurse $env:CLIPNEST_SNAPSHOT smoke-snapshots
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: matrix.platform == 'x64' && always()
         with:
           name: smoke-snapshots
@@ -96,7 +96,7 @@ jobs:
           Compress-Archive -Path publish/${{ matrix.rid }}/* -DestinationPath ClipNest-${{ matrix.rid }}.zip
           "Zip size: {0:N1} MB" -f ((Get-Item ClipNest-${{ matrix.rid }}.zip).Length / 1MB) | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ClipNest-${{ matrix.rid }}
           path: ClipNest-${{ matrix.rid }}.zip

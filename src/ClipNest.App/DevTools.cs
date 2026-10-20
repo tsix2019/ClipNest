@@ -18,6 +18,12 @@ internal static class DevTools
         try
         {
             Directory.CreateDirectory(outDir);
+            // Baseline: started, panel never shown (the common state after login).
+            await Task.Delay(3000);
+            Platform.MemoryTrimmer.Trim();
+            await Task.Delay(1000);
+            var idleStart = MemoryLine();
+
             Seed(host);
             await host.Panel.ViewModel.ReloadAsync();
             host.Panel.SuppressAutoHide = true;

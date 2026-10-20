@@ -1,4 +1,3 @@
-#if DEBUG
 using System.Runtime.InteropServices.WindowsRuntime;
 using ClipNest.Core;
 using Microsoft.UI.Xaml;
@@ -9,7 +8,7 @@ using Windows.Storage.Streams;
 namespace ClipNest.App;
 
 /// <summary>
-/// Debug-only helpers. <c>CLIPNEST_SNAPSHOT=&lt;dir&gt;</c> seeds sample data, renders the panel (light and dark)
+/// Developer / CI helpers (inactive unless the environment variable is set). <c>CLIPNEST_SNAPSHOT=&lt;dir&gt;</c> seeds sample data, renders the panel (light and dark)
 /// and the settings window to PNG files, then exits. Combine with <c>CLIPNEST_DATA</c> to use a scratch data folder.
 /// </summary>
 internal static class DevTools
@@ -45,13 +44,28 @@ internal static class DevTools
                 await SaveAsync((UIElement)settings.Content, Path.Combine(outDir, "settings-light.png"));
             }
 
-            File.WriteAllText(Path.Combine(outDir, "done.txt"), $"ok {DateTime.Now:O}\nworkingSet={Environment.WorkingSet / 1048576} MB\n");
+            var withWindows = MemoryLine();
+            host.SettingsWindowForTests?.Close();
+            host.Panel.HideNow();
+            host.Panel.ViewModel.Unload();
+            await Task.Delay(500);
+            Platform.MemoryTrimmer.Trim();
+            await Task.Delay(1500);
+            File.WriteAllText(Path.Combine(outDir, "done.txt"),
+                $"ok {DateTime.Now:O}\nwith windows: {withWindows}\nhidden + trimmed: {MemoryLine()}\n" +
+                $"native aot: {!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported}\n");
         }
         catch (Exception e)
         {
             File.WriteAllText(Path.Combine(outDir, "done.txt"), "error\n" + e);
         }
         host.Quit();
+    }
+
+    private static string MemoryLine()
+    {
+        using var p = System.Diagnostics.Process.GetCurrentProcess();
+        return $"workingSet={p.WorkingSet64 / 1048576} MB private={p.PrivateMemorySize64 / 1048576} MB";
     }
 
     private static void Seed(AppHost host)
@@ -103,4 +117,3 @@ internal static class DevTools
         await File.WriteAllBytesAsync(path, bytes);
     }
 }
-#endif

@@ -62,6 +62,29 @@ jobs:
           -p:Platform=${{ matrix.platform }} -p:WindowsAppSDKSelfContained=true -p:SelfContained=true
           -p:PublishAot=false -p:PublishReadyToRun=true -o publish/${{ matrix.rid }}
 
+      - name: Smoke test (published build starts and renders)
+        if: matrix.platform == 'x64'
+        shell: pwsh
+        run: |
+          $env:CLIPNEST_DATA = Join-Path $env:RUNNER_TEMP 'cn-data'
+          $env:CLIPNEST_SNAPSHOT = Join-Path $env:RUNNER_TEMP 'cn-snap'
+          New-Item -ItemType Directory -Force $env:CLIPNEST_DATA | Out-Null
+          '{ "LaunchAtStartup": false, "HideFromCapture": false }' | Set-Content (Join-Path $env:CLIPNEST_DATA 'settings.json')
+          $p = Start-Process -FilePath publish/${{ matrix.rid }}/ClipNest.exe -PassThru
+          $done = Join-Path $env:CLIPNEST_SNAPSHOT 'done.txt'
+          for ($i = 0; $i -lt 90 -and -not (Test-Path $done); $i++) { Start-Sleep 1 }
+          if (Test-Path $done) { Get-Content $done | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append }
+          Get-Content (Join-Path $env:CLIPNEST_DATA 'logs/clipnest.log') -ErrorAction SilentlyContinue
+          if (-not (Test-Path $done) -or -not (Select-String -Path $done -Pattern '^ok' -Quiet)) { Stop-Process -Id $p.Id -ErrorAction SilentlyContinue; exit 1 }
+          Copy-Item -Recurse $env:CLIPNEST_SNAPSHOT smoke-snapshots
+
+      - uses: actions/upload-artifact@v4
+        if: matrix.platform == 'x64' && always()
+        with:
+          name: smoke-snapshots
+          path: smoke-snapshots
+          if-no-files-found: ignore
+
       - name: Package
         shell: pwsh
         run: |

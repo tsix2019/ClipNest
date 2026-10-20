@@ -143,10 +143,8 @@ public sealed class AppHost : IDisposable
         };
         trim.Start();
 
-#if DEBUG
         if (Environment.GetEnvironmentVariable("CLIPNEST_SNAPSHOT") is { Length: > 0 } snapshotDir)
             DevTools.RunSnapshot(this, snapshotDir);
-#endif
     }
 
     /// <summary>Registers hotkeys from settings; returns the gestures that could not be registered.</summary>

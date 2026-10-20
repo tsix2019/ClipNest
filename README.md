@@ -9,6 +9,10 @@
 
 <p align="center"><a href="#中文">中文</a> · <a href="#english">English</a></p>
 
+<p align="center"><img src="docs/images/panel-light.png" alt="ClipNest panel (light)" /></p>
+<p align="center"><img src="docs/images/panel-dark.png" alt="ClipNest panel (dark)" /></p>
+<p align="center"><img src="docs/images/settings-light.png" width="560" alt="Settings" /></p>
+
 ---
 
 ## 中文
@@ -68,6 +72,13 @@ dotnet publish src/ClipNest.App -c Release -r win-x64 -p:Platform=x64 -p:Windows
 ```
 
 数据保存在 `%LocalAppData%\ClipNest\`，包括数据库、图片和日志。
+
+开发调试：
+- `CLIPNEST_DATA=<目录>`：使用其他数据目录。
+- `CLIPNEST_SNAPSHOT=<目录>`：写入示例数据，把面板和设置窗口渲染成 PNG 后退出。
+- `ClipNest.exe --toggle`：切换面板显示（程序已在运行时）。
+
+开发进度和待实测项见 [docs/STATUS.md](docs/STATUS.md)。
 
 ---
 

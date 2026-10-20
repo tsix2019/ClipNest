@@ -1,0 +1,16 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="ARM64" />
+  </Configurations>
+  <Folder Name="/src/">
+    <Project Path="src/ClipNest.Core/ClipNest.Core.csproj" />
+    <Project Path="src/ClipNest.Data/ClipNest.Data.csproj" />
+    <Project Path="src/ClipNest.Platform/ClipNest.Platform.csproj" />
+    <Project Path="src/ClipNest.App/ClipNest.App.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ClipNest.Core.Tests/ClipNest.Core.Tests.csproj" />
+    <Project Path="tests/ClipNest.Data.Tests/ClipNest.Data.Tests.csproj" />
+  </Folder>
+</Solution>

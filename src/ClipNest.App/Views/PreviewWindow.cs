@@ -1,0 +1,173 @@
+using ClipNest.App.ViewModels;
+using ClipNest.Core;
+using ClipNest.Platform;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Graphics;
+using WinRT.Interop;
+
+namespace ClipNest.App.Views;
+
+/// <summary>
+/// Quick Look–style preview shown above the panel. It never takes focus, so the panel keeps handling keys
+/// (Space/Esc close it, arrow keys switch the previewed item).
+/// </summary>
+public sealed partial class PreviewWindow : Window
+{
+    private static PreviewWindow? _current;
+
+    private readonly AppHost _host;
+    private readonly nint _hwnd;
+    private readonly ContentControl _content = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalContentAlignment = VerticalAlignment.Stretch };
+    private readonly TextBlock _title = new() { FontSize = 14, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis };
+    private readonly TextBlock _subtitle = new() { FontSize = 12, Opacity = 0.7, TextTrimming = TextTrimming.CharacterEllipsis };
+
+    public long? ItemId { get; private set; }
+
+    private PreviewWindow(AppHost host)
+    {
+        _host = host;
+        _hwnd = WindowNative.GetWindowHandle(this);
+
+        var presenter = OverlappedPresenter.Create();
+        presenter.IsResizable = false;
+        presenter.IsMaximizable = false;
+        presenter.IsMinimizable = false;
+        presenter.IsAlwaysOnTop = true;
+        presenter.SetBorderAndTitleBar(false, false);
+        AppWindow.SetPresenter(presenter);
+        AppWindow.IsShownInSwitchers = false;
+        WindowStyler.MakeToolWindow(_hwnd);
+        WindowStyler.MakeNoActivate(_hwnd);
+        WindowStyler.SetRoundedCorners(_hwnd);
+        WindowStyler.SetCaptureExcluded(_hwnd, host.Settings.HideFromCapture);
+        SystemBackdrop = new DesktopAcrylicBackdrop();
+
+        var header = new StackPanel { Spacing = 2, Margin = new Thickness(20, 14, 20, 10) };
+        header.Children.Add(_title);
+        header.Children.Add(_subtitle);
+        var root = new Grid { RowDefinitions = { new RowDefinition { Height = GridLength.Auto }, new RowDefinition() } };
+        root.Children.Add(header);
+        Grid.SetRow(_content, 1);
+        root.Children.Add(_content);
+        Content = root;
+    }
+
+    public static bool IsOpen => _current is not null;
+
+    /// <summary>Opens the preview for <paramref name="item"/>, or closes it if already showing that item.</summary>
+    public static void Toggle(AppHost host, ClipItem item, PanelWindow panel)
+    {
+        if (_current is { } open && open.ItemId == item.Id)
+        {
+            Close(panel);
+            return;
+        }
+        _current ??= new PreviewWindow(host);
+        panel.SuppressAutoHide = true;
+        _current.ShowItem(item);
+    }
+
+    /// <summary>Follows the panel selection while open.</summary>
+    public static void Follow(ClipItem item)
+    {
+        if (_current is { } open && open.ItemId != item.Id) open.ShowItem(item);
+    }
+
+    public static void Close(PanelWindow? panel)
+    {
+        if (_current is null) return;
+        var window = _current;
+        _current = null;
+        window.Close();
+        if (panel is not null) panel.SuppressAutoHide = false;
+    }
+
+    private void ShowItem(ClipItem item)
+    {
+        ItemId = item.Id;
+        var app = _host.AppView(item.SourceAppPath);
+        _title.Text = string.IsNullOrWhiteSpace(item.Title) ? Loc.KindName(item.Kind) : item.Title;
+        _subtitle.Text = string.Join("  ·  ", new[] { app.Name, Loc.RelativeTime(item.CreatedAt, DateTimeOffset.Now) }.Where(s => s.Length > 0));
+        _content.Content = Build(item);
+
+        var (work, scale) = DisplayHelper.GetCursorMonitor();
+        var panelHeight = (_host.Settings.PanelHeight + 16) * scale;
+        var w = (int)(work.Width * 0.56);
+        var h = (int)Math.Max(240 * scale, (work.Height - panelHeight) * 0.86);
+        var x = work.X + (work.Width - w) / 2;
+        var y = work.Y + (int)((work.Height - panelHeight - h) / 2);
+        AppWindow.MoveAndResize(new RectInt32(x, y, w, h));
+        AppWindow.Show(false);
+    }
+
+    private UIElement Build(ClipItem item)
+    {
+        switch (item.Kind)
+        {
+            case ClipKind.Image:
+            {
+                var image = new Image { Stretch = Stretch.Uniform, Margin = new Thickness(16, 0, 16, 16) };
+                var path = item.Blobs.HasFlag(BlobFlags.Png) ? _host.Blobs.PathFor(item.ContentHash, BlobFlags.Png) : null;
+                if (path is not null) image.Source = new BitmapImage(new Uri(path));
+                return image;
+            }
+            case ClipKind.Color:
+            {
+                var vm = new ClipCardViewModel(item, _host, new CardMetrics());
+                var swatch = new Border { Background = vm.ColorBrush, CornerRadius = new CornerRadius(12), Margin = new Thickness(16, 0, 16, 16) };
+                swatch.Child = new TextBlock
+                {
+                    Text = $"{item.Text}\n{vm.MetaText}",
+                    Foreground = vm.ColorForeground,
+                    FontSize = 28,
+                    FontFamily = new FontFamily("Cascadia Mono, Consolas"),
+                    TextAlignment = TextAlignment.Center,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center,
+                };
+                return swatch;
+            }
+            case ClipKind.File:
+                return Scroll(new TextBlock { Text = string.Join("\n", item.FilePaths), FontSize = 14, TextWrapping = TextWrapping.Wrap, LineHeight = 22 });
+            case ClipKind.Link:
+            {
+                var panel = new StackPanel { Spacing = 8 };
+                if (!string.IsNullOrEmpty(item.LinkTitle))
+                    panel.Children.Add(new TextBlock { Text = item.LinkTitle, FontSize = 22, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+                panel.Children.Add(new TextBlock { Text = item.Text, FontSize = 15, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"] });
+                return Scroll(panel);
+            }
+            default:
+                return Scroll(new TextBlock
+                {
+                    Text = item.Text ?? "",
+                    FontSize = 14,
+                    LineHeight = 21,
+                    TextWrapping = TextWrapping.Wrap,
+                    FontFamily = LooksLikeCode(item.Text) ? new FontFamily("Cascadia Mono, Consolas") : FontFamily.XamlAutoFontFamily,
+                });
+        }
+
+        static ScrollViewer Scroll(UIElement content) => new()
+        {
+            Content = content,
+            Padding = new Thickness(20, 0, 20, 16),
+            HorizontalScrollMode = ScrollMode.Disabled,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        };
+    }
+
+    /// <summary>Heuristic for a monospace preview: indentation or common code punctuation on several lines.</summary>
+    internal static bool LooksLikeCode(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        var lines = text.Split('\n', 50);
+        if (lines.Length < 3) return false;
+        var codeish = lines.Count(l => l.StartsWith("    ") || l.StartsWith('\t') || l.TrimEnd().EndsWith(';') || l.TrimEnd().EndsWith('{') || l.TrimEnd().EndsWith('}'));
+        return codeish * 3 >= lines.Length;
+    }
+}

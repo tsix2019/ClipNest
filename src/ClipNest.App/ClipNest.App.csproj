@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <RootNamespace>ClipNest.App</RootNamespace>
+    <AssemblyName>ClipNest</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\ClipNest.ico</ApplicationIcon>
+    <Platforms>x64;ARM64</Platforms>
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+    <UseWinUI>true</UseWinUI>
+    <WindowsPackageType>None</WindowsPackageType>
+    <EnableMsixTooling>true</EnableMsixTooling>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <!-- Only the languages we ship; avoids copying dozens of WinUI satellite folders. -->
+    <SatelliteResourceLanguages>en;zh-CN;zh-Hans</SatelliteResourceLanguages>
+    <!-- Smaller, faster release builds. CI turns on PublishAot + WindowsAppSDKSelfContained. -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+    <UseSystemResourceKeys>true</UseSystemResourceKeys>
+    <EventSourceSupport>false</EventSourceSupport>
+    <TieredPGO>true</TieredPGO>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <PublishTrimmed>true</PublishTrimmed>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Component packages only (the Microsoft.WindowsAppSDK metapackage would also pull AI/ML/Widgets). -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.WinUI" Version="2.3.0" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.Foundation" Version="2.3.5" />
+    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="2.1.3" />
+    <!-- Runtime binaries are only needed for self-contained (release/CI) builds; local builds use the installed runtime. -->
+    <PackageReference Include="Microsoft.WindowsAppSDK.Runtime" Version="2.3.1" Condition="'$(WindowsAppSDKSelfContained)' == 'true'" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClipNest.Core\ClipNest.Core.csproj" />
+    <ProjectReference Include="..\ClipNest.Data\ClipNest.Data.csproj" />
+    <ProjectReference Include="..\ClipNest.Platform\ClipNest.Platform.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Strings\*.json" LogicalName="Strings.%(Filename).json" />
+    <Content Include="Assets\ClipNest.ico;Assets\Logo.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

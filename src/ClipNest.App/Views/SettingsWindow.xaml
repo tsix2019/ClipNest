@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="ClipNest.App.Views.SettingsWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:l="using:ClipNest.App"
+    xmlns:views="using:ClipNest.App.Views">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid x:Name="TitleBar" Padding="16,0,0,0" ColumnSpacing="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Image Source="ms-appx:///Assets/Logo.png" Width="16" Height="16" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{l:Tr Key=Settings_Title}" FontSize="12" VerticalAlignment="Center" />
+        </Grid>
+
+        <NavigationView x:Name="Nav" Grid.Row="1"
+                        PaneDisplayMode="Left" IsSettingsVisible="False" IsBackButtonVisible="Collapsed"
+                        IsPaneToggleButtonVisible="False" OpenPaneLength="200"
+                        SelectionChanged="Nav_SelectionChanged">
+            <NavigationView.MenuItems>
+                <NavigationViewItem Content="{l:Tr Key=Settings_General}" Tag="General" IsSelected="True">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE713;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="{l:Tr Key=Settings_Shortcuts}" Tag="Shortcuts">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE765;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="{l:Tr Key=Settings_Privacy}" Tag="Privacy">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE72E;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem Content="{l:Tr Key=Settings_About}" Tag="About">
+                    <NavigationViewItem.Icon><FontIcon Glyph="&#xE946;" /></NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <ScrollViewer Padding="28,8,28,28">
+                <Grid MaxWidth="760" HorizontalAlignment="Stretch">
+
+                    <!-- ===== General ===== -->
+                    <StackPanel x:Name="GeneralPage" Spacing="6">
+                        <TextBlock Text="{l:Tr Key=Settings_General}" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,12" />
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_Language}" Description="{l:Tr Key=Settings_LanguageDesc}" Glyph="&#xF2B7;">
+                            <ComboBox x:Name="LanguageBox" MinWidth="180" SelectionChanged="LanguageBox_SelectionChanged" />
+                        </views:SettingRow>
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_Startup}" Glyph="&#xE7E8;">
+                            <ToggleSwitch x:Name="StartupToggle" Toggled="StartupToggle_Toggled" OnContent="" OffContent="" MinWidth="0" />
+                        </views:SettingRow>
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_Retention}" Description="{l:Tr Key=Settings_RetentionDesc}" Glyph="&#xE81C;">
+                            <ComboBox x:Name="RetentionBox" MinWidth="180" SelectionChanged="RetentionBox_SelectionChanged" />
+                        </views:SettingRow>
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_PasteMode}" Glyph="&#xE77F;">
+                            <ComboBox x:Name="PasteModeBox" MinWidth="180" SelectionChanged="PasteModeBox_SelectionChanged" />
+                        </views:SettingRow>
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_PlainText}" Description="{l:Tr Key=Settings_PlainTextDesc}" Glyph="&#xE8E9;">
+                            <ToggleSwitch x:Name="PlainTextToggle" Toggled="PlainTextToggle_Toggled" OnContent="" OffContent="" MinWidth="0" />
+                        </views:SettingRow>
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_LinkTitles}" Description="{l:Tr Key=Settings_LinkTitlesDesc}" Glyph="&#xE71B;">
+                            <ToggleSwitch x:Name="LinkTitlesToggle" Toggled="LinkTitlesToggle_Toggled" OnContent="" OffContent="" MinWidth="0" />
+                        </views:SettingRow>
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_Ocr}" Description="{l:Tr Key=Settings_OcrDesc}" Glyph="&#xE8D2;">
+                            <ToggleSwitch x:Name="OcrToggle" Toggled="OcrToggle_Toggled" OnContent="" OffContent="" MinWidth="0" />
+                        </views:SettingRow>
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_Clear}" Description="{l:Tr Key=Settings_ClearDesc}" Glyph="&#xE74D;">
+                            <Button x:Name="ClearButton" Content="{l:Tr Key=Settings_ClearButton}" Click="ClearButton_Click" />
+                        </views:SettingRow>
+                    </StackPanel>
+
+                    <!-- ===== Shortcuts ===== -->
+                    <StackPanel x:Name="ShortcutsPage" Spacing="6" Visibility="Collapsed">
+                        <TextBlock Text="{l:Tr Key=Settings_Shortcuts}" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,12" />
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_PanelHotkey}" Description="{l:Tr Key=Settings_HotkeyHint}" Glyph="&#xE8C8;">
+                            <views:HotkeyBox x:Name="PanelHotkeyBox" GestureChanged="PanelHotkeyBox_GestureChanged" />
+                        </views:SettingRow>
+                        <views:SettingRow Header="{l:Tr Key=Settings_StackHotkey}" Description="{l:Tr Key=Settings_HotkeyHint}" Glyph="&#xE8FD;">
+                            <views:HotkeyBox x:Name="StackHotkeyBox" GestureChanged="StackHotkeyBox_GestureChanged" />
+                        </views:SettingRow>
+
+                        <InfoBar x:Name="HotkeyError" Severity="Error" IsClosable="False" Message="{l:Tr Key=Settings_HotkeyTaken}" />
+
+                        <Button Content="{l:Tr Key=Settings_ResetShortcuts}" Click="ResetShortcuts_Click" Margin="0,8,0,0" />
+
+                        <TextBlock Text="{l:Tr Key=Settings_KeysTitle}" Style="{StaticResource BodyStrongTextBlockStyle}" Margin="0,24,0,6" />
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <TextBlock x:Name="KeysHelp" TextWrapping="Wrap" LineHeight="24" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ===== Privacy ===== -->
+                    <StackPanel x:Name="PrivacyPage" Spacing="6" Visibility="Collapsed">
+                        <TextBlock Text="{l:Tr Key=Settings_Privacy}" Style="{StaticResource SubtitleTextBlockStyle}" Margin="0,0,0,12" />
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_IgnoreConfidential}" Description="{l:Tr Key=Settings_IgnoreConfidentialDesc}" Glyph="&#xE72E;">
+                            <ToggleSwitch x:Name="ConfidentialToggle" Toggled="ConfidentialToggle_Toggled" OnContent="" OffContent="" MinWidth="0" />
+                        </views:SettingRow>
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_HideFromCapture}" Description="{l:Tr Key=Settings_HideFromCaptureDesc}" Glyph="&#xE7B3;">
+                            <ToggleSwitch x:Name="CaptureToggle" Toggled="CaptureToggle_Toggled" OnContent="" OffContent="" MinWidth="0" />
+                        </views:SettingRow>
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_PauseRecording}" Description="{l:Tr Key=Settings_PauseRecordingDesc}" Glyph="&#xE769;">
+                            <ToggleSwitch x:Name="PauseToggle" Toggled="PauseToggle_Toggled" OnContent="" OffContent="" MinWidth="0" />
+                        </views:SettingRow>
+
+                        <Grid Margin="0,20,0,6" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{l:Tr Key=Settings_IgnoredApps}" Style="{StaticResource BodyStrongTextBlockStyle}" />
+                                <TextBlock Text="{l:Tr Key=Settings_IgnoredAppsDesc}" Style="{StaticResource CaptionTextBlockStyle}"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                            <DropDownButton x:Name="RunningAppsButton" Grid.Column="1" Content="{l:Tr Key=Settings_AddRunning}" VerticalAlignment="Center">
+                                <DropDownButton.Flyout>
+                                    <MenuFlyout x:Name="RunningAppsMenu" Placement="BottomEdgeAlignedRight" Opening="RunningAppsMenu_Opening" />
+                                </DropDownButton.Flyout>
+                            </DropDownButton>
+                            <Button Grid.Column="2" Content="{l:Tr Key=Settings_AddApp}" Click="AddApp_Click" VerticalAlignment="Center" />
+                        </Grid>
+                        <Border Style="{StaticResource SettingsCardStyle}" Padding="4">
+                            <Grid>
+                                <ListView x:Name="IgnoredList" SelectionMode="None" MaxHeight="320" />
+                                <TextBlock x:Name="NoIgnoredText" Text="{l:Tr Key=Settings_NoIgnoredApps}" Margin="12"
+                                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ===== About ===== -->
+                    <StackPanel x:Name="AboutPage" Spacing="6" Visibility="Collapsed">
+                        <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,20">
+                            <Image Source="ms-appx:///Assets/Logo.png" Width="64" Height="64" />
+                            <StackPanel VerticalAlignment="Center" Spacing="2">
+                                <TextBlock Text="ClipNest" Style="{StaticResource TitleTextBlockStyle}" />
+                                <TextBlock x:Name="VersionText" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                            </StackPanel>
+                        </StackPanel>
+                        <TextBlock Text="{l:Tr Key=Settings_AboutDesc}" TextWrapping="Wrap" Margin="0,0,0,12" />
+
+                        <views:SettingRow Header="{l:Tr Key=Settings_DataFolder}" x:Name="DataFolderRow" Glyph="&#xE8B7;">
+                            <Button Content="{l:Tr Key=Settings_OpenFolder}" Click="OpenFolder_Click" />
+                        </views:SettingRow>
+                        <views:SettingRow Header="{l:Tr Key=Settings_Stats}" x:Name="StatsRow" Glyph="&#xE9D2;" />
+                        <TextBlock Text="{l:Tr Key=Settings_PrivacyNote}" TextWrapping="Wrap" Margin="0,16,0,0"
+                                   Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </Grid>
+            </ScrollViewer>
+        </NavigationView>
+    </Grid>
+</Window>

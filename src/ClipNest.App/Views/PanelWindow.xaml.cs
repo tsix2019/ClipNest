@@ -481,14 +481,15 @@ public sealed partial class PanelWindow : Window
         if (IsDown(VirtualKey.Control) || IsDown(VirtualKey.Menu)) return;
         SearchBox.Focus(FocusState.Programmatic);
         e.Handled = true;
-        // With a CJK IME the raw letter would cut the composition short ("n" + "ihao"): just focus the box
-        // and let the user type into it.
-        var ime = Windows.Globalization.Language.CurrentInputMethodLanguageTag;
-        if (ime.StartsWith("zh", StringComparison.OrdinalIgnoreCase) || ime.StartsWith("ja", StringComparison.OrdinalIgnoreCase) || ime.StartsWith("ko", StringComparison.OrdinalIgnoreCase))
-            return;
-        SearchBox.Text += e.Character;
-        SearchBox.SelectionStart = SearchBox.Text.Length;
-        e.Handled = true;
+        // Replay the key into the box, so a CJK IME composes the whole word ("nihao", not "n" + "ihao");
+        // without an IME the key simply types the same character. Wait until the IME has followed the focus.
+        var c = e.Character;
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (PasteInjector.RetypeKey(c)) return;
+            SearchBox.Text += c;
+            SearchBox.SelectionStart = SearchBox.Text.Length;
+        });
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)

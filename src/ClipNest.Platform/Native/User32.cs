@@ -52,6 +52,7 @@ internal static unsafe partial class User32
     public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
     public const uint KEYEVENTF_KEYUP = 0x0002;
     public const ushort VK_SHIFT = 0x10;
+    public const ushort VK_CAPITAL = 0x14;
     public const ushort VK_CONTROL = 0x11;
     public const ushort VK_MENU = 0x12;
     public const ushort VK_LWIN = 0x5B;
@@ -204,6 +205,8 @@ internal static unsafe partial class User32
     [LibraryImport(Lib, SetLastError = true)] public static partial uint SendInput(uint count, INPUT* inputs, int size);
     [LibraryImport(Lib)] public static partial short GetAsyncKeyState(int vk);
     [LibraryImport(Lib)] public static partial uint MapVirtualKeyW(uint code, uint mapType);
+    [LibraryImport(Lib)] public static partial short VkKeyScanW(ushort ch);
+    [LibraryImport(Lib)] public static partial short GetKeyState(int vk);
 
     [LibraryImport(Lib)] [return: MarshalAs(UnmanagedType.Bool)] public static partial bool GetCursorPos(out POINT pt);
     [LibraryImport(Lib)] public static partial nint MonitorFromPoint(POINT pt, uint flags);

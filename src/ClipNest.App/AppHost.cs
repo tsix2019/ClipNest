@@ -221,6 +221,11 @@ public sealed class AppHost : IDisposable
             {
                 var snapshot = Reader.Read();
                 if (snapshot is null || Settings.IsIgnored(snapshot.SourceAppPath)) return;
+                if (Writer.IsEcho(snapshot.Text))
+                {
+                    Log.Info($"Ignored an echo of our own write by {Path.GetFileName(snapshot.SourceAppPath)}");
+                    return;
+                }
                 if (_ignoreNext)
                 {
                     _ignoreNext = false;

@@ -104,3 +104,22 @@ public class TextExtractionTests
     [InlineData("  ク リ ッ プ  ", "クリップ")]
     public void Ocr_cjk_spaces_are_joined(string input, string expected) => Assert.Equal(expected, OcrService.JoinCjk(input));
 }
+
+public class AppNameTests
+{
+    [Theory]
+    [InlineData("Notepad.exe", "Notepad")]
+    [InlineData("Visual Studio Code", "Visual Studio Code")]
+    [InlineData(".exe", ".exe")]
+    public void Exe_suffix_is_stripped(string input, string expected) => Assert.Equal(expected, AppInfoProvider.StripExe(input));
+
+    [Fact]
+    public void Packaged_app_gets_a_friendly_name()
+    {
+        // Store Notepad's own FileDescription is "Notepad.exe"; whatever we resolve must not end in .exe.
+        var notepad = new Windows.Management.Deployment.PackageManager()
+            .FindPackagesForUser(string.Empty, "Microsoft.WindowsNotepad_8wekyb3d8bbwe").FirstOrDefault()?.InstalledLocation.Path;
+        if (notepad is null) return;
+        Assert.DoesNotContain(".exe", AppInfoProvider.DisplayName(Path.Combine(notepad, "Notepad", "Notepad.exe")), StringComparison.OrdinalIgnoreCase);
+    }
+}

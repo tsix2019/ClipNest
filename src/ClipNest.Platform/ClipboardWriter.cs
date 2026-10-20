@@ -19,6 +19,24 @@ public sealed class ClipboardPayload
 /// <summary>Writes payloads to the clipboard, tagged with <see cref="ClipboardFormats.Internal"/>.</summary>
 public sealed unsafe class ClipboardWriter(MessageWindow owner, ImageProcessor images)
 {
+    private const long EchoWindowMs = 10_000;
+    private volatile string? _lastText;
+    private long _lastWriteTicks;
+
+    /// <summary>
+    /// True when <paramref name="text"/> is what we wrote moments ago. Clipboard-sync tools (remote desktop,
+    /// IMEs, phone links) write it back without our marker, which would re-attribute the item to them.
+    /// </summary>
+    public bool IsEcho(string? text)
+    {
+        var last = _lastText;
+        if (text is null || last is null) return false;
+        if (Environment.TickCount64 - Interlocked.Read(ref _lastWriteTicks) > EchoWindowMs) return false;
+        return string.Equals(Normalize(text), Normalize(last), StringComparison.Ordinal);
+    }
+
+    private static string Normalize(string s) => s.Replace("\r\n", "\n").TrimEnd('\0');
+
     /// <summary>Places the payload on the clipboard. Returns false if the clipboard could not be opened.</summary>
     public bool Write(ClipboardPayload payload, bool plainText)
     {
@@ -66,6 +84,8 @@ public sealed unsafe class ClipboardWriter(MessageWindow owner, ImageProcessor i
             }
 
             SetBytes(ClipboardFormats.Internal, [1]);
+            _lastText = payload.Text ?? (payload.Files is { Count: > 0 } written ? string.Join("\r\n", written) : null);
+            Interlocked.Exchange(ref _lastWriteTicks, Environment.TickCount64);
             return true;
         }
         finally

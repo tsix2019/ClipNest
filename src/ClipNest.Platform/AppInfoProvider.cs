@@ -20,7 +20,8 @@ public sealed unsafe class AppInfoProvider(string iconDirectory, IClipRepository
         if (_cache.TryGetValue(exePath, out var cached)) return cached;
 
         var info = repository.GetApp(exePath);
-        if (info is null || (info.IconFile is not null && !File.Exists(info.IconFile)))
+        // Rebuild when the icon went missing, or for names stored before packaged-app names were resolved.
+        if (info is null || (info.IconFile is not null && !File.Exists(info.IconFile)) || info.Name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
             info = Build(exePath);
             if (info is not null) repository.UpsertApp(info);
@@ -56,17 +57,44 @@ public sealed unsafe class AppInfoProvider(string iconDirectory, IClipRepository
 
     public static string DisplayName(string exePath)
     {
+        if (PackageDisplayName(exePath) is { } packaged) return packaged;
         try
         {
             var v = FileVersionInfo.GetVersionInfo(exePath);
             var name = v.FileDescription?.Trim();
             if (string.IsNullOrEmpty(name) || name.Length > 40) name = v.ProductName?.Trim();
-            if (!string.IsNullOrEmpty(name) && name.Length <= 40) return name;
+            if (!string.IsNullOrEmpty(name) && name.Length <= 40) return StripExe(name);
         }
         catch (FileNotFoundException)
         {
         }
         return Path.GetFileNameWithoutExtension(exePath);
+    }
+
+    /// <summary>Some apps (Store Notepad, for one) describe themselves as "Notepad.exe".</summary>
+    internal static string StripExe(string name) =>
+        name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) && name.Length > 4 ? name[..^4] : name;
+
+    /// <summary>Localized name of a packaged app ("记事本"), from the package folder in its path.</summary>
+    private static string? PackageDisplayName(string exePath)
+    {
+        const string marker = @"\WindowsApps\";
+        var start = exePath.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (start < 0) return null;
+        start += marker.Length;
+        var end = exePath.IndexOf('\\', start);
+        if (end < 0) return null;
+        try
+        {
+            var package = new Windows.Management.Deployment.PackageManager().FindPackageForUser(string.Empty, exePath[start..end]);
+            var name = package?.DisplayName?.Trim();
+            return string.IsNullOrEmpty(name) || name.Length > 40 || name.StartsWith("ms-resource:", StringComparison.OrdinalIgnoreCase) ? null : name;
+        }
+        catch (Exception e)
+        {
+            Log.Warn($"Package name for {exePath}: {e.Message}");
+            return null;
+        }
     }
 
     private static string KeyFor(string path) =>

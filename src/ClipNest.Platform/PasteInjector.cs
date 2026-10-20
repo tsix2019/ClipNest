@@ -155,6 +155,31 @@ public sealed class PasteInjector : IDisposable
         if (sent != 4) Log.Warn($"SendInput sent {sent}/4");
     }
 
+    /// <summary>
+    /// Types <paramref name="c"/> again as a real key press, so that an IME sees it in the newly focused text box.
+    /// </summary>
+    /// <returns>False when the current layout has no plain or Shift key for the character.</returns>
+    public static unsafe bool RetypeKey(char c)
+    {
+        var scan = VkKeyScanW(c);
+        if (scan == -1) return false;
+        var vk = (ushort)(scan & 0xFF);
+        var shiftState = (scan >> 8) & 0xFF;
+        if ((shiftState & ~1) != 0) return false; // needs Ctrl/Alt (AltGr): leave it to the caller
+        var wantShift = (shiftState & 1) != 0;
+        if (char.IsLetter(c) && (GetKeyState(VK_CAPITAL) & 1) != 0) wantShift = !wantShift;
+        var shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+        if (wantShift != shiftDown && shiftDown) return false; // would need to lift a held Shift
+
+        var inputs = stackalloc INPUT[4];
+        var n = 0;
+        if (wantShift && !shiftDown) inputs[n++] = Key(VK_LSHIFT, up: false);
+        inputs[n++] = Key(vk, up: false);
+        inputs[n++] = Key(vk, up: true);
+        if (wantShift && !shiftDown) inputs[n++] = Key(VK_LSHIFT, up: true);
+        return SendInput((uint)n, inputs, sizeof(INPUT)) == n;
+    }
+
     private static INPUT Key(ushort vk, bool up) => new()
     {
         type = INPUT_KEYBOARD,

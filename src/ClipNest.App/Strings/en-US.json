@@ -166,5 +166,6 @@
   "Filter_Yesterday": "Yesterday",
   "Filter_7d": "Last 7 days",
   "Filter_30d": "Last 30 days",
-  "Filter_Clear": "Clear filters"
+  "Filter_Clear": "Clear filters",
+  "Drag_PinTo": "Pin to {0}"
 }

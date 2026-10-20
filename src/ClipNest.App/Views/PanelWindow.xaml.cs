@@ -774,7 +774,34 @@ public sealed partial class PanelWindow : Window
                 }
             });
         }
-        e.Data.RequestedOperation = DataPackageOperation.Copy;
+        // In-app marker so cards can be dropped onto pinboard tabs.
+        e.Data.Properties[CardIdsKey] = string.Join(',', cards.Select(c => c.Id));
+        e.Data.RequestedOperation = DataPackageOperation.Copy | DataPackageOperation.Link;
+    }
+
+    private const string CardIdsKey = "ClipNest.CardIds";
+
+    private void Tab_DragOver(object sender, DragEventArgs e)
+    {
+        if (e.DataView.Properties.ContainsKey(CardIdsKey) && sender is FrameworkElement { Tag: PinboardTabViewModel tab } && tab.PinboardId != ViewModel.SelectedTab.PinboardId)
+        {
+            e.AcceptedOperation = DataPackageOperation.Link;
+            e.DragUIOverride.Caption = tab.IsHistory ? Loc.Get("Menu_Unpin") : Loc.Format("Drag_PinTo", tab.Name);
+            e.DragUIOverride.IsGlyphVisible = false;
+        }
+        else
+        {
+            e.AcceptedOperation = DataPackageOperation.None;
+        }
+    }
+
+    private void Tab_Drop(object sender, DragEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: PinboardTabViewModel tab }) return;
+        if (!e.DataView.Properties.TryGetValue(CardIdsKey, out var raw) || raw is not string ids) return;
+        var wanted = ids.Split(',').Select(long.Parse).ToHashSet();
+        var items = ViewModel.Items.Where(c => wanted.Contains(c.Id)).Select(c => c.Item).ToList();
+        _host.SetPinboard(items, tab.PinboardId);
     }
 
     // ---------- resize grip ----------

@@ -166,5 +166,6 @@
   "Filter_Yesterday": "昨天",
   "Filter_7d": "最近 7 天",
   "Filter_30d": "最近 30 天",
-  "Filter_Clear": "清除筛选"
+  "Filter_Clear": "清除筛选",
+  "Drag_PinTo": "固定到 {0}"
 }

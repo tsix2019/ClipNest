@@ -75,7 +75,8 @@ jobs:
           $env:CLIPNEST_DATA = Join-Path $env:RUNNER_TEMP 'cn-data'
           $env:CLIPNEST_SNAPSHOT = Join-Path $env:RUNNER_TEMP 'cn-snap'
           New-Item -ItemType Directory -Force $env:CLIPNEST_DATA | Out-Null
-          '{ "LaunchAtStartup": false, "HideFromCapture": false }' | Set-Content (Join-Path $env:CLIPNEST_DATA 'settings.json')
+          # Starts docked left: the first open on a side edge is checked too (DevTools.RunSnapshot).
+          '{ "LaunchAtStartup": false, "HideFromCapture": false, "PanelEdge": "Left" }' | Set-Content (Join-Path $env:CLIPNEST_DATA 'settings.json')
           $p = Start-Process -FilePath publish/${{ matrix.rid }}/ClipNest.exe -PassThru
           $done = Join-Path $env:CLIPNEST_SNAPSHOT 'done.txt'
           for ($i = 0; $i -lt 90 -and -not (Test-Path $done); $i++) { Start-Sleep 1 }

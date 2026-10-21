@@ -27,6 +27,11 @@ internal static class DevTools
             Seed(host);
             await host.Panel.ViewModel.ReloadAsync();
             host.Panel.SuppressAutoHide = true;
+            var layoutProblems = new List<string>();
+            void CheckLayout(string what)
+            {
+                if (host.Panel.CardsFollowEdge() is not true) layoutProblems.Add($"{what} ({host.Settings.PanelEdge})");
+            }
 
             foreach (var mode in new[] { ThemeManager.Light, ThemeManager.Dark })
             {
@@ -35,6 +40,7 @@ internal static class DevTools
                 await Task.Delay(2500);
                 host.Panel.ViewModel.SetBadgesVisible(mode == ThemeManager.Dark);
                 await Task.Delay(400);
+                CheckLayout("panel-" + mode);
                 await SaveAsync((UIElement)host.Panel.Content, Path.Combine(outDir, $"panel-{mode}.png"));
                 host.Panel.HideNow();
             }
@@ -45,6 +51,7 @@ internal static class DevTools
                 host.Settings.PanelEdge = edge;
                 host.Panel.ShowPanel();
                 await Task.Delay(1500);
+                CheckLayout("edge switch");
                 await SaveAsync((UIElement)host.Panel.Content, Path.Combine(outDir, $"panel-edge-{edge.ToString().ToLowerInvariant()}.png"));
                 host.Panel.HideNow();
             }
@@ -68,7 +75,8 @@ internal static class DevTools
             Platform.MemoryTrimmer.Trim();
             await Task.Delay(1500);
             File.WriteAllText(Path.Combine(outDir, "done.txt"),
-                $"ok {DateTime.Now:O}\nidle after start: {idleStart}\nwith windows: {withWindows}\nhidden + trimmed: {MemoryLine()}\n" +
+                (layoutProblems.Count == 0 ? "ok" : "error: cards not laid out along the panel edge: " + string.Join(", ", layoutProblems)) +
+                $" {DateTime.Now:O}\nidle after start: {idleStart}\nwith windows: {withWindows}\nhidden + trimmed: {MemoryLine()}\n" +
                 $"native aot: {!System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported}\n");
         }
         catch (Exception e)

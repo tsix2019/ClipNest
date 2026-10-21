@@ -399,15 +399,28 @@ public sealed partial class PanelWindow : Window
     /// </summary>
     private void ApplyListOrientation()
     {
-        if (CardList.ItemsPanelRoot is ItemsStackPanel panel)
-        {
-            var orientation = IsVertical ? Orientation.Vertical : Orientation.Horizontal;
-            if (panel.Orientation != orientation) panel.Orientation = orientation;
-        }
+        // Set through the dependency property on the Panel the list reports: in the AOT build the panel
+        // object does not cast to ItemsStackPanel (the check silently failed and the cards stayed in a row).
+        CardList.ItemsPanelRoot?.SetValue(ItemsStackPanel.OrientationProperty, IsVertical ? Orientation.Vertical : Orientation.Horizontal);
         for (var i = 0; i < ViewModel.Items.Count; i++)
         {
-            if (CardList.ContainerFromIndex(i) is ListViewItem container) container.Margin = CardMargin;
+            if (CardList.ContainerFromIndex(i) is FrameworkElement container) container.Margin = CardMargin;
         }
+    }
+
+    /// <summary>
+    /// Self-check for the snapshot smoke test: the first two cards sit below each other on a left/right
+    /// panel and side by side otherwise. Null when there are too few cards to tell.
+    /// </summary>
+    internal bool? CardsFollowEdge()
+    {
+        if (ViewModel.Items.Count < 2) return null;
+        if (CardList.ContainerFromIndex(0) is not FrameworkElement first || CardList.ContainerFromIndex(1) is not FrameworkElement second) return false;
+        var a = first.TransformToVisual(CardList).TransformPoint(default);
+        var b = second.TransformToVisual(CardList).TransformPoint(default);
+        return IsVertical
+            ? b.Y > a.Y + 1 && Math.Abs(b.X - a.X) < 2
+            : b.X > a.X + 1 && Math.Abs(b.Y - a.Y) < 2;
     }
 
     private void ApplyEdgeLayout()

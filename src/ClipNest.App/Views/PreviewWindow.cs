@@ -7,6 +7,8 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Graphics;
+using Windows.Storage;
+using Windows.Storage.FileProperties;
 using WinRT.Interop;
 
 namespace ClipNest.App.Views;
@@ -132,6 +134,19 @@ public sealed partial class PreviewWindow : Window
                 };
                 return swatch;
             }
+            case ClipKind.File when item.FilePaths.Count == 1:
+            {
+                var grid = new Grid { Margin = new Thickness(16, 0, 16, 16), RowSpacing = 10 };
+                grid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+                grid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                var image = new Image { Stretch = Stretch.Uniform };
+                var path = new TextBlock { Text = item.FilePaths[0], FontSize = 13, TextWrapping = TextWrapping.Wrap, HorizontalAlignment = HorizontalAlignment.Center, Opacity = 0.75 };
+                Grid.SetRow(path, 1);
+                grid.Children.Add(image);
+                grid.Children.Add(path);
+                LoadFilePreview(image, item.FilePaths[0]);
+                return grid;
+            }
             case ClipKind.File:
                 return Scroll(new TextBlock { Text = string.Join("\n", item.FilePaths), FontSize = 14, TextWrapping = TextWrapping.Wrap, LineHeight = 22 });
             case ClipKind.Link:
@@ -160,6 +175,41 @@ public sealed partial class PreviewWindow : Window
             HorizontalScrollMode = ScrollMode.Disabled,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
         };
+    }
+
+    private static readonly string[] ImageExtensions = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".tif", ".tiff", ".ico", ".heic", ".avif", ".jxr"];
+
+    /// <summary>Full image for picture files; for anything else (video, PDF…) a large shell thumbnail.</summary>
+    private static void LoadFilePreview(Image image, string path)
+    {
+        if (!ImageExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+        {
+            LoadShellThumbnail(image, path);
+            return;
+        }
+        var bitmap = new BitmapImage();
+        // No codec for the format (or not a real image): the shell may still have a thumbnail.
+        bitmap.ImageFailed += (_, _) => LoadShellThumbnail(image, path);
+        bitmap.UriSource = new Uri(path);
+        image.Source = bitmap;
+    }
+
+    private static async void LoadShellThumbnail(Image image, string path)
+    {
+        try
+        {
+            var file = await StorageFile.GetFileFromPathAsync(path);
+            using var thumb = await file.GetThumbnailAsync(ThumbnailMode.SingleItem, 1024, ThumbnailOptions.ResizeThumbnail);
+            if (thumb is null || thumb.Size == 0) return;
+            var bitmap = new BitmapImage();
+            await bitmap.SetSourceAsync(thumb);
+            if (thumb.Type == ThumbnailType.Icon) image.MaxHeight = image.MaxWidth = 128;
+            image.Source = bitmap;
+        }
+        catch (Exception)
+        {
+            // missing file or no access: the path text is all we can show
+        }
     }
 
     /// <summary>Heuristic for a monospace preview: indentation or common code punctuation on several lines.</summary>

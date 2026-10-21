@@ -3,6 +3,8 @@ using Microsoft.UI;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Windows.Storage;
+using Windows.Storage.FileProperties;
 using Windows.UI;
 
 namespace ClipNest.App.ViewModels;
@@ -119,6 +121,57 @@ public sealed partial class ClipCardViewModel : ObservableObject
     public SolidColorBrush ColorForeground => Brush(ColorMath.PrefersDarkText(ColorArgb | 0xFF000000) ? 0xD9000000u : 0xF2FFFFFFu);
     public string ColorText => Item.Text ?? "";
 
+    /// <summary>
+    /// Shell thumbnail of a single copied file: a real preview for images, videos, PDFs…, otherwise the file
+    /// type's icon. Loaded on first use; null (generic glyph) until then or when there is none.
+    /// </summary>
+    public ImageSource? FileVisual
+    {
+        get
+        {
+            if (!_fileVisualRequested) LoadFileVisual();
+            return _fileVisual;
+        }
+    }
+
+    /// <summary>The card body shows the file's own preview instead of name and folder.</summary>
+    public Visibility FilePreviewVisibility => _fileVisualIsPreview ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility FileInfoVisibility => _fileVisualIsPreview ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility FileIconVisibility => _fileVisual is not null && !_fileVisualIsPreview ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility FileGlyphVisibility => _fileVisual is null ? Visibility.Visible : Visibility.Collapsed;
+
+    private ImageSource? _fileVisual;
+    private bool _fileVisualIsPreview;
+    private bool _fileVisualRequested;
+
+    private async void LoadFileVisual()
+    {
+        _fileVisualRequested = true;
+        if (Item.Kind != ClipKind.File || Item.FileCount != 1 || Item.FilePaths.FirstOrDefault() is not { } path) return;
+        try
+        {
+            // Async all the way: a path on an offline share must not block the UI thread.
+            var file = await StorageFile.GetFileFromPathAsync(path);
+            var size = (uint)Math.Clamp(Metrics.Height * 2, 96, 512);
+            using var thumb = await file.GetThumbnailAsync(ThumbnailMode.SingleItem, size, ThumbnailOptions.ResizeThumbnail);
+            if (thumb is null || thumb.Size == 0) return;
+            var bitmap = new BitmapImage();
+            await bitmap.SetSourceAsync(thumb);
+            _fileVisual = bitmap;
+            _fileVisualIsPreview = thumb.Type == ThumbnailType.Image;
+        }
+        catch (Exception)
+        {
+            return; // missing file, folder, no access: keep the generic glyph
+        }
+        OnPropertyChanged(nameof(FileVisual));
+        OnPropertyChanged(nameof(FilePreviewVisibility));
+        OnPropertyChanged(nameof(FileInfoVisibility));
+        OnPropertyChanged(nameof(FileIconVisibility));
+        OnPropertyChanged(nameof(FileGlyphVisibility));
+        OnPropertyChanged(nameof(MetaText));
+    }
+
     public string FileName => Item.FilePaths is { Count: > 0 } paths ? Path.GetFileName(paths[0].TrimEnd('\\')) is { Length: > 0 } n ? n : paths[0] : "";
     public string FileDirectory => Item.FilePaths is { Count: > 0 } paths ? Path.GetDirectoryName(paths[0]) ?? "" : "";
     /// <summary>Segoe Fluent Icons glyph: folder, multiple documents, or a single document.</summary>
@@ -132,6 +185,8 @@ public sealed partial class ClipCardViewModel : ObservableObject
         ClipKind.Image when Item.ImageWidth is { } w && Item.ImageHeight is { } h => Loc.Format("Meta_Image", w, h),
         ClipKind.Link => Item.Text ?? "",
         ClipKind.File when Item.FileCount > 1 => Loc.Format("Meta_Files", Item.FileCount),
+        // With a preview filling the body, the footer carries the name.
+        ClipKind.File when _fileVisualIsPreview => FileSizeText() is { Length: > 0 } size ? $"{FileName} · {size}" : FileName,
         ClipKind.File => FileSizeText(),
         ClipKind.Color => RgbText(),
         _ => "",

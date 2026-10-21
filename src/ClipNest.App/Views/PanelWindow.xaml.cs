@@ -342,14 +342,71 @@ public sealed partial class PanelWindow : Window
     private void CopySelected() =>
         _ = _host.PasteAsync(SelectedCards().Select(c => c.Item).ToList(), plainText: false, pasteIntoApp: false);
 
-    private void DeleteSelected()
+    /// <summary>Asks before deleting the selected cards (Enter or the button confirms, Esc cancels).</summary>
+    private void ConfirmDeleteSelected()
     {
         var cards = SelectedCards();
+        if (cards.Count == 0) return;
+        var delete = new Button
+        {
+            Content = Loc.Get("Common_Delete"),
+            Style = (Style)Application.Current.Resources["AccentButtonStyle"],
+            HorizontalAlignment = HorizontalAlignment.Right,
+        };
+        var panel = new StackPanel { Spacing = 10, MaxWidth = 280 };
+        panel.Children.Add(new TextBlock
+        {
+            Text = cards.Count == 1 ? Loc.Get("Delete_ConfirmOne") : Loc.Format("Delete_ConfirmMany", cards.Count),
+            FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+            TextWrapping = TextWrapping.Wrap,
+        });
+        panel.Children.Add(new TextBlock
+        {
+            Text = Loc.Get("Delete_ConfirmBody"),
+            TextWrapping = TextWrapping.Wrap,
+            Foreground = ThemeManager.Brush("TextFillColorSecondaryBrush"),
+        });
+        panel.Children.Add(delete);
+        var flyout = new Flyout { Content = panel, Placement = FlyoutPlacementMode.Top };
+        var confirmed = false;
+        void Confirm()
+        {
+            confirmed = true;
+            flyout.Hide();
+            DeleteCards(cards);
+        }
+        delete.Click += (_, _) => Confirm();
+        flyout.Opened += (_, _) =>
+        {
+            _pendingDelete = Confirm;
+            delete.Focus(FocusState.Programmatic);
+        };
+        flyout.Closed += (_, _) =>
+        {
+            _pendingDelete = null;
+            if (!confirmed) FocusSelectedCard();
+        };
+        flyout.ShowAt(CardList.ContainerFromItem(cards[0]) as FrameworkElement ?? CardList);
+    }
+
+    private void DeleteCards(List<ClipCardViewModel> cards)
+    {
         if (cards.Count == 0) return;
         var index = ViewModel.Items.IndexOf(cards[0]);
         _host.Delete(cards.Select(c => c.Item));
         foreach (var card in cards) ViewModel.Remove(card);
         Select(index);
+        FocusSelectedCard();
+    }
+
+    /// <summary>Pins cards to the top (or unpins them) and reloads, keeping the first one selected.</summary>
+    private async void SetTop(List<ClipCardViewModel> cards, bool top)
+    {
+        var first = cards[0].Id;
+        _host.SetTop(cards.Select(c => c.Item), top);
+        await ViewModel.ReloadAsync();
+        var vm = ViewModel.Items.FirstOrDefault(i => i.Id == first);
+        if (vm is not null) Select(ViewModel.Items.IndexOf(vm));
         FocusSelectedCard();
     }
 
@@ -369,8 +426,37 @@ public sealed partial class PanelWindow : Window
 
     private bool SearchFocused => SearchBox.FocusState != FocusState.Unfocused;
 
+    /// <summary>
+    /// Typing in a flyout's text box (pinboard name, rename) must not reach the card shortcuts: Backspace
+    /// there deleted the selected cards. Flyout keys route through the panel root like any other key.
+    /// </summary>
+    private bool IsEditingOtherText(object? source)
+    {
+        if (source is TextBox or RichEditBox or PasswordBox or AutoSuggestBox && !ReferenceEquals(source, SearchBox)) return true;
+        var focused = Content?.XamlRoot is { } root ? FocusManager.GetFocusedElement(root) : null;
+        return focused is TextBox or RichEditBox or PasswordBox && !ReferenceEquals(focused, SearchBox);
+    }
+
+    /// <summary>Confirms the open delete prompt (pressing Delete again confirms it).</summary>
+    private Action? _pendingDelete;
+
+    /// <summary>A flyout or menu is open: it handles its own keys (Esc closes it, not the panel).</summary>
+    private bool PopupOpen =>
+        Content?.XamlRoot is { } root
+        && VisualTreeHelper.GetOpenPopupsForXamlRoot(root).Any(p => p.Child is not ToolTip);
+
     private void Root_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
+        if (PopupOpen)
+        {
+            if (_pendingDelete is { } confirm && e.Key is VirtualKey.Delete or VirtualKey.Back)
+            {
+                confirm();
+                e.Handled = true;
+            }
+            return;
+        }
+        if (IsEditingOtherText(e.OriginalSource)) return;
         var ctrl = IsDown(VirtualKey.Control);
         var shift = IsDown(VirtualKey.Shift);
         var inSearch = SearchFocused;
@@ -437,7 +523,7 @@ public sealed partial class PanelWindow : Window
         switch (e.Key)
         {
             case VirtualKey.Delete or VirtualKey.Back:
-                DeleteSelected();
+                ConfirmDeleteSelected();
                 e.Handled = true;
                 break;
             case VirtualKey.Z when ctrl:
@@ -462,6 +548,10 @@ public sealed partial class PanelWindow : Window
             case VirtualKey.End:
                 Select(ViewModel.Items.Count - 1);
                 FocusSelectedCard();
+                e.Handled = true;
+                break;
+            case VirtualKey.T when ctrl:
+                if (SelectedCards() is { Count: > 0 } toTop) SetTop(toTop, !toTop.All(c => c.Item.IsTop));
                 e.Handled = true;
                 break;
             case VirtualKey.R when ctrl:
@@ -495,6 +585,7 @@ public sealed partial class PanelWindow : Window
     private void Root_CharacterReceived(UIElement sender, CharacterReceivedRoutedEventArgs e)
     {
         if (SearchFocused || char.IsControl(e.Character) || char.IsWhiteSpace(e.Character)) return;
+        if (IsEditingOtherText(e.OriginalSource)) return;
         if (IsDown(VirtualKey.Control) || IsDown(VirtualKey.Menu)) return;
         SearchBox.Focus(FocusState.Programmatic);
         e.Handled = true;
@@ -571,6 +662,9 @@ public sealed partial class PanelWindow : Window
         if (cards.Any(c => c.Item.IsPinned))
             menu.Items.Add(Item("Menu_Unpin", "\uE77A", () => _host.SetPinboard(cards.Select(c => c.Item), null)));
 
+        var allTop = cards.All(c => c.Item.IsTop);
+        menu.Items.Add(Item(allTop ? "Menu_Untop" : "Menu_Top", allTop ? "\uE77A" : "\uE840", () => SetTop(cards, !allTop), "Ctrl+T"));
+
         if (cards.Count == 1)
         {
             menu.Items.Add(Item("Menu_Preview", "\uE8A1", () => PreviewWindow.Toggle(_host, first.Item, this), "Space"));
@@ -585,7 +679,7 @@ public sealed partial class PanelWindow : Window
         }
 
         menu.Items.Add(new MenuFlyoutSeparator());
-        menu.Items.Add(Item("Menu_Delete", "\uE74D", DeleteSelected, "Delete"));
+        menu.Items.Add(Item("Menu_Delete", "\uE74D", ConfirmDeleteSelected, "Delete"));
 
         if (anchor is null)
         {

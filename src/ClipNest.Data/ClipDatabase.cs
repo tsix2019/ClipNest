@@ -5,7 +5,7 @@ namespace ClipNest.Data;
 /// <summary>Opens <c>clipnest.db</c>, applies migrations and recovers from corruption.</summary>
 public static class ClipDatabase
 {
-    public const int SchemaVersion = 1;
+    public const int SchemaVersion = 2;
 
     /// <summary>Opens (creating if needed) the database. Returns the connection and whether a corrupt file was set aside.</summary>
     public static (SqliteConnection Connection, bool RecoveredFromCorruption) Open(string path)
@@ -62,10 +62,14 @@ public static class ClipDatabase
         conn.InTransaction(() =>
         {
             if (version < 1) conn.Execute(V1);
+            if (version < 2) conn.Execute(V2);
             conn.Execute("DELETE FROM schema_version");
             conn.Execute("INSERT INTO schema_version(v) VALUES (?)", SchemaVersion);
         });
     }
+
+    /// <summary>"Pin to top": 0 = normal, otherwise when it was pinned (newest pin first).</summary>
+    private const string V2 = "ALTER TABLE items ADD COLUMN top_at INTEGER NOT NULL DEFAULT 0;";
 
     private const string V1 = """
         CREATE TABLE pinboards(

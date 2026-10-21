@@ -205,11 +205,12 @@ public sealed partial class PanelViewModel : ObservableObject
         {
             existing.Update(result.Item);
             var index = Items.IndexOf(existing);
-            if (index > 0) Items.Move(index, 0);
+            var front = FrontIndex(existing);
+            if (!existing.Item.IsTop && index > front) Items.Move(index, front);
         }
         else if (belongs)
         {
-            Items.Insert(0, new ClipCardViewModel(result.Item, _host, Metrics));
+            Items.Insert(FrontIndex(null), new ClipCardViewModel(result.Item, _host, Metrics));
         }
         RenumberBadges();
         OnPropertyChanged(nameof(EmptyVisibility));
@@ -231,15 +232,28 @@ public sealed partial class PanelViewModel : ObservableObject
         }
         vm.Update(item);
 
-        // Used again (pasted): history is ordered by recency, so it moves to the front.
-        if (!IsSearching && Items.Count > 0 && Items[0] != vm && item.CreatedAt >= Items[0].Item.CreatedAt) MoveToFront(vm);
+        // Used again (pasted): history is ordered by recency, so it moves to the front (behind top items).
+        if (IsSearching || item.IsTop) return;
+        var front = FrontIndex(vm);
+        var index = Items.IndexOf(vm);
+        if (index > front && item.CreatedAt >= Items[front].Item.CreatedAt)
+        {
+            Items.Move(index, front);
+            RenumberBadges();
+        }
     }
 
-    public void MoveToFront(ClipCardViewModel vm)
+    /// <summary>Where the newest non-top item goes: right after the items pinned to the top.</summary>
+    private int FrontIndex(ClipCardViewModel? except)
     {
-        var index = Items.IndexOf(vm);
-        if (index > 0) Items.Move(index, 0);
-        RenumberBadges();
+        var i = 0;
+        foreach (var card in Items)
+        {
+            if (ReferenceEquals(card, except)) continue;
+            if (!card.Item.IsTop) break;
+            i++;
+        }
+        return i;
     }
 
     public void Remove(ClipCardViewModel vm)

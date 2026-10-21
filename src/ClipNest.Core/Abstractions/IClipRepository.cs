@@ -25,13 +25,16 @@ public interface IClipRepository
     void Rename(long id, string? title);
     void UpdateText(long id, ClipKind kind, string text, string hash, int charCount);
     void SetPinboard(long id, long? pinboardId);
+
+    /// <summary>Pins an item to the top of every list (<paramref name="topAt"/> &gt; 0, newest first) or unpins it (0).</summary>
+    void SetTop(long id, long topAt);
     void SetOcrText(long id, string text);
     void SetLinkTitle(long id, string title);
 
     /// <summary>Items still lacking OCR text (images only), newest first.</summary>
     IReadOnlyList<ClipItem> ImagesWithoutOcr(int limit);
 
-    /// <summary>Deletes unpinned items created before <paramref name="cutoff"/>; returns their content hashes.</summary>
+    /// <summary>Deletes unpinned (and not top) items created before <paramref name="cutoff"/>; returns their content hashes.</summary>
     IReadOnlyList<string> PurgeOlderThan(DateTimeOffset cutoff);
 
     /// <summary>Keeps only the newest <paramref name="max"/> unpinned items; returns removed hashes.</summary>

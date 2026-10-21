@@ -433,6 +433,18 @@ public sealed class AppHost : IDisposable
         }
     }
 
+    /// <summary>Pins items to the top of every list, or unpins them.</summary>
+    public void SetTop(IEnumerable<ClipItem> items, bool top)
+    {
+        var now = DateTimeOffset.Now.ToUnixTimeMilliseconds();
+        foreach (var item in items.Reverse()) // the first selected ends up first
+        {
+            item.TopAt = top ? now++ : 0;
+            Repository.SetTop(item.Id, item.TopAt);
+            ItemChanged?.Invoke(item);
+        }
+    }
+
     /// <summary>Deletes all unpinned items. Blocks while a capture is in progress; call off the UI thread.</summary>
     public void ClearHistory()
     {

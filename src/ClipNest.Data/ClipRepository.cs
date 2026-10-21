@@ -12,7 +12,7 @@ namespace ClipNest.Data;
 public sealed class ClipRepository : IClipRepository, IDisposable
 {
     private const string Columns =
-        "id, kind, title, text, hash, app_path, app_name, created_at, pinboard_id, char_count, img_w, img_h, blobs, ocr_text, link_title, file_count";
+        "id, kind, title, text, hash, app_path, app_name, created_at, pinboard_id, char_count, img_w, img_h, blobs, ocr_text, link_title, file_count, top_at";
 
     private readonly SqliteConnection _db;
     private readonly Lock _lock = new();
@@ -43,8 +43,8 @@ public sealed class ClipRepository : IClipRepository, IDisposable
         lock (_lock)
         {
             _db.Execute(
-                "INSERT INTO items(kind, title, text, hash, app_path, app_name, created_at, pinboard_id, char_count, img_w, img_h, blobs, ocr_text, link_title, file_count) " +
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO items(kind, title, text, hash, app_path, app_name, created_at, pinboard_id, char_count, img_w, img_h, blobs, ocr_text, link_title, file_count, top_at) " +
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 ItemArgs(item));
             item.Id = _db.LastInsertRowId;
             return item.Id;
@@ -66,7 +66,7 @@ public sealed class ClipRepository : IClipRepository, IDisposable
     private static object?[] ItemArgs(ClipItem i) =>
     [
         (int)i.Kind, i.Title, i.Text, i.ContentHash, i.SourceAppPath, i.SourceAppName, i.CreatedAt,
-        i.PinboardId, i.CharCount, i.ImageWidth, i.ImageHeight, (int)i.Blobs, i.OcrText, i.LinkTitle, i.FileCount,
+        i.PinboardId, i.CharCount, i.ImageWidth, i.ImageHeight, (int)i.Blobs, i.OcrText, i.LinkTitle, i.FileCount, i.TopAt,
     ];
 
     public void Touch(long id, DateTimeOffset at, string? appPath, string? appName)
@@ -139,7 +139,7 @@ public sealed class ClipRepository : IClipRepository, IDisposable
 
         var sql = new StringBuilder($"SELECT {Prefixed()} FROM {from}");
         if (where.Count > 0) sql.Append(" WHERE ").AppendJoin(" AND ", where);
-        sql.Append(" ORDER BY items.created_at DESC, items.id DESC LIMIT ? OFFSET ?");
+        sql.Append(" ORDER BY items.top_at DESC, items.created_at DESC, items.id DESC LIMIT ? OFFSET ?");
         args.Add(query.Limit);
         args.Add(query.Offset);
 
@@ -185,6 +185,11 @@ public sealed class ClipRepository : IClipRepository, IDisposable
         lock (_lock) _db.Execute("UPDATE items SET pinboard_id = ? WHERE id = ?", pinboardId, id);
     }
 
+    public void SetTop(long id, long topAt)
+    {
+        lock (_lock) _db.Execute("UPDATE items SET top_at = ? WHERE id = ?", topAt, id);
+    }
+
     public void SetOcrText(long id, string text)
     {
         lock (_lock) _db.Execute("UPDATE items SET ocr_text = ? WHERE id = ?", text, id);
@@ -203,12 +208,12 @@ public sealed class ClipRepository : IClipRepository, IDisposable
     }
 
     public IReadOnlyList<string> PurgeOlderThan(DateTimeOffset cutoff) =>
-        DeleteWhere("pinboard_id IS NULL AND created_at < ?", cutoff);
+        DeleteWhere("pinboard_id IS NULL AND top_at = 0 AND created_at < ?", cutoff);
 
     public IReadOnlyList<string> EnforceCap(int max) =>
-        DeleteWhere("pinboard_id IS NULL AND id NOT IN (SELECT id FROM items WHERE pinboard_id IS NULL ORDER BY created_at DESC, id DESC LIMIT ?)", max);
+        DeleteWhere("pinboard_id IS NULL AND top_at = 0 AND id NOT IN (SELECT id FROM items WHERE pinboard_id IS NULL AND top_at = 0 ORDER BY created_at DESC, id DESC LIMIT ?)", max);
 
-    public IReadOnlyList<string> ClearHistory() => DeleteWhere("pinboard_id IS NULL");
+    public IReadOnlyList<string> ClearHistory() => DeleteWhere("pinboard_id IS NULL AND top_at = 0");
 
     private List<string> DeleteWhere(string condition, params object?[] args)
     {
@@ -415,6 +420,7 @@ public sealed class ClipRepository : IClipRepository, IDisposable
         OcrText = s.GetString(13),
         LinkTitle = s.GetString(14),
         FileCount = s.GetInt32OrNull(15),
+        TopAt = s.GetInt64(16),
     };
 
     public void Dispose()

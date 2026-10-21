@@ -108,6 +108,8 @@ public sealed partial class ClipCardViewModel : ObservableObject
 
     public string LinkHost => Uri.TryCreate(Item.Text, UriKind.Absolute, out var u) ? u.Host.Replace("www.", "", StringComparison.OrdinalIgnoreCase) : Item.Text ?? "";
     public string LinkTitle => Item.LinkTitle ?? "";
+    public Visibility TopVisibility => Item.IsTop ? Visibility.Visible : Visibility.Collapsed;
+
     public Visibility LinkTitleVisibility => string.IsNullOrEmpty(Item.LinkTitle) ? Visibility.Collapsed : Visibility.Visible;
 
     private uint ColorArgb
@@ -316,6 +318,7 @@ public sealed partial class ClipCardViewModel : ObservableObject
         OnPropertyChanged(nameof(MetaText));
         OnPropertyChanged(nameof(LinkTitle));
         OnPropertyChanged(nameof(LinkTitleVisibility));
+        OnPropertyChanged(nameof(TopVisibility));
         if (appChanged)
         {
             OnPropertyChanged(nameof(HeaderBrush));

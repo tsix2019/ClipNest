@@ -46,6 +46,11 @@
   "Menu_ShowInExplorer": "Show in File Explorer",
   "Menu_OpenLink": "Open link",
   "Menu_Delete": "Delete",
+  "Delete_ConfirmOne": "Delete this item?",
+  "Delete_ConfirmMany": "Delete {0} items?",
+  "Delete_ConfirmBody": "Press Delete or Enter to confirm. Ctrl+Z brings it back.",
+  "Menu_Top": "Pin to top",
+  "Menu_Untop": "Unpin from top",
 
   "Pinboard_NewTitle": "New pinboard",
   "Pinboard_EditTitle": "Edit pinboard",

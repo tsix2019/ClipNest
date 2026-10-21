@@ -46,6 +46,11 @@
   "Menu_ShowInExplorer": "在资源管理器中显示",
   "Menu_OpenLink": "打开链接",
   "Menu_Delete": "删除",
+  "Delete_ConfirmOne": "删除这条记录？",
+  "Delete_ConfirmMany": "删除这 {0} 条记录？",
+  "Delete_ConfirmBody": "再按 Delete 或回车确认，按 Ctrl+Z 可以撤销。",
+  "Menu_Top": "置顶",
+  "Menu_Untop": "取消置顶",
 
   "Pinboard_NewTitle": "新建 Pinboard",
   "Pinboard_EditTitle": "编辑 Pinboard",

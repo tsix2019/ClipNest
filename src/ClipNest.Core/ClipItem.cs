@@ -33,7 +33,12 @@ public sealed class ClipItem
     public string? LinkTitle { get; set; }
     public int? FileCount { get; set; }
 
+    /// <summary>"Pin to top" time (Unix ms); 0 = not pinned to the top.</summary>
+    public long TopAt { get; set; }
+
     public bool IsPinned => PinboardId is not null;
+
+    public bool IsTop => TopAt != 0;
 
     public IReadOnlyList<string> FilePaths =>
         Kind == ClipKind.File && Text is not null

@@ -64,7 +64,11 @@
 
 <p align="center"><img src="docs/images/pinboard.webp" alt="Pinboards" /></p>
 
-自建彩色收藏夹，把卡片拖到标签上即可收藏，收藏的内容永不过期，<kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>→</kbd> 切换。里面的文本还可以当作**片段模板**：粘贴时会自动展开 `{date}`、`{time}`、`{clipboard}` 等占位符。
+自建彩色收藏夹，把卡片拖到标签上即可收藏，收藏的内容永不过期，<kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>→</kbd> 切换。
+
+点顶栏的 ✎ **新建文本**，可以把地址、签名、回复模板等常用文字直接写进 Pinboard（在剪贴板页新建会放进“常用”），以后打开面板一键填充。里面的文本还可以当作**片段模板**：粘贴时会自动展开 `{date}`、`{time}`、`{clipboard}` 等占位符。
+
+经常用的某一条可以右键 **置顶**（<kbd>Ctrl</kbd>+<kbd>T</kbd>），它会一直排在最前面，也不会被自动清理。
 
 ### 搜得到，筛得准
 
@@ -93,9 +97,13 @@
 
 按住 <kbd>Ctrl</kbd> 会显示数字角标，<kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> 直接粘贴对应的那一项。外观可以选浅色、深色或跟随系统，切换时立即生效。
 
+- 可以在设置里开启 **<kbd>Win</kbd>+<kbd>V</kbd> 打开 ClipNest**，代替系统自带的剪贴板历史；关闭后 <kbd>Win</kbd>+<kbd>V</kbd> 恢复原样。
+- 面板可以停靠在屏幕**底部、顶部、左侧或右侧**，从对应的边缘滑出；左右两侧时卡片竖向排列。
+- 界面**字体**可以换成任意已安装的字体。
+
 ### 隐私优先
 
-- 所有数据**只保存在本机**，没有账号，也不上传任何内容。
+- 所有数据**只保存在本机**，没有账号，也不上传任何内容。只有在“关于”里点击**检查更新**时才会访问 GitHub。
 - 自动跳过密码管理器标记为敏感的内容；私钥、API 令牌、JWT 等疑似密钥按内容识别，不会被记录。
 - 可以排除指定应用、暂停记录、“忽略下一次复制”，也可以设置不记录图片。
 - 截图、录屏、屏幕共享时自动隐藏 ClipNest 的窗口。
@@ -115,13 +123,14 @@
 
 | 操作 | 按键 |
 |---|---|
-| 打开 / 关闭面板 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>（可在设置中修改） |
+| 打开 / 关闭面板 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>（可在设置中修改），或开启后的 <kbd>Win</kbd>+<kbd>V</kbd> |
 | Paste Stack | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> |
 | 粘贴 / 以纯文本粘贴 | <kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd> |
 | 快速粘贴第 N 项 | <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd>（加 <kbd>Shift</kbd> 为纯文本） |
 | 切换条目 / Pinboard | <kbd>←</kbd> <kbd>→</kbd> / <kbd>Ctrl</kbd>+<kbd>←</kbd> <kbd>→</kbd> |
 | 预览 / 编辑 / 重命名 / 固定 | <kbd>Space</kbd> / <kbd>Ctrl</kbd>+<kbd>E</kbd> / <kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd> |
-| 仅复制 / 删除 / 撤销删除 | <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Delete</kbd> / <kbd>Ctrl</kbd>+<kbd>Z</kbd> |
+| 置顶 / 取消置顶 | <kbd>Ctrl</kbd>+<kbd>T</kbd> |
+| 仅复制 / 删除（需确认，再按一次 <kbd>Delete</kbd>）/ 撤销删除 | <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Delete</kbd> / <kbd>Ctrl</kbd>+<kbd>Z</kbd> |
 | 关闭 | <kbd>Esc</kbd> |
 
 ### 下载安装
@@ -190,12 +199,14 @@ No runtime to install, just unzip and run. The download is about 28 MB, it idles
 
 - **A card for every kind of content** — text (code in a monospace font), rich text, images, files (with real previews and icons), links (with page titles) and colors (with swatches). Headers take the color of the source app. <kbd>Space</kbd> opens a large preview.
 - **Paste as…** — right-click to paste a transformed version, with a live preview of each option: case changes, camelCase / snake_case / kebab-case, whitespace cleanup, sorting and de-duplicating lines, JSON pretty / minify, URL and Base64 encode / decode, HEX / RGB / HSL colors, OCR text from images, and file paths.
-- **Pinboards** — colored collections that never expire. Drag a card onto a tab to pin it. Pinned text works as a snippet template: `{date}`, `{time}` and `{clipboard}` expand when pasted.
+- **Pinboards** — colored collections that never expire. Drag a card onto a tab to pin it, or write your own text (addresses, signatures, reply templates) with **New text**. Pinned text works as a snippet template: `{date}`, `{time}` and `{clipboard}` expand when pasted.
+- **Pin to top** — <kbd>Ctrl</kbd>+<kbd>T</kbd> keeps an item at the front of the list, and it is never cleaned up.
 - **Search and filters** — just start typing. Substring matching works for CJK too, and text inside images is searchable. Filter by type, source app, date or Pinboard, or type `type:image`, `app:chrome`, `date:7d`.
 - **Paste Stack** — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>. Copy several things, then press <kbd>Ctrl</kbd>+<kbd>V</kbd> repeatedly to paste them in order.
-- **Keyboard first** — hold <kbd>Ctrl</kbd> to see number badges, then <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> pastes one directly. Light, dark or system theme.
+- **Keyboard first** — hold <kbd>Ctrl</kbd> to see number badges, then <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> pastes one directly. Optionally take over <kbd>Win</kbd>+<kbd>V</kbd> from the Windows clipboard history.
+- **Your layout** — dock the panel to the bottom, top, left or right edge (it slides in from there), pick any installed font, and choose a light, dark or system theme.
 - **Private by design**:
-  - Data never leaves your PC, and there is no account.
+  - Data never leaves your PC, and there is no account. GitHub is contacted only when you click **Check for updates**.
   - Content marked sensitive (password managers) and anything that looks like a key or token is skipped.
   - You can exclude apps, pause recording, or ignore the next copy.
   - ClipNest's windows are hidden from screenshots and screen sharing.

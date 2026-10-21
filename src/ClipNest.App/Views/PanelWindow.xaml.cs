@@ -120,8 +120,10 @@ public sealed partial class PanelWindow : Window
 
         WindowStyler.MakeToolWindow(_hwnd);
         WindowStyler.SetRoundedCorners(_hwnd);
+        WindowStyler.RemoveFrame(_hwnd);
         ApplyCaptureSetting();
-        SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
+        // The acrylic backdrop is attached on first show: set on a never-shown window, DWM draws it as a
+        // blank topmost rectangle at the default window position until the panel is opened.
     }
 
     public void ApplyCaptureSetting() => WindowStyler.SetCaptureExcluded(_hwnd, _host.Settings.HideFromCapture);
@@ -154,8 +156,10 @@ public sealed partial class PanelWindow : Window
         if (_showCancelled) return; // HideNow() ran while loading (e.g. Paste Stack opened)
 
         PositionOnCursorMonitor();
+        SystemBackdrop ??= new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
         Root.Opacity = 0;
         _shown = true;
+        WindowStyler.RemoveFrame(_hwnd); // the presenter may restore its frame styles
         AppWindow.Show(true);
         Activate();
         if (!WindowStyler.BringToFront(_hwnd)) Log.Warn("Panel could not take the foreground");

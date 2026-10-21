@@ -80,6 +80,11 @@ public sealed partial class ClipCardViewModel : ObservableObject
         }
     }
 
+    private static readonly FontFamily MonoFont = new("Cascadia Mono, Consolas");
+
+    /// <summary>Code keeps its shape in a monospace font.</summary>
+    public FontFamily PreviewFont => Views.PreviewWindow.LooksLikeCode(Item.Text) ? MonoFont : FontFamily.XamlAutoFontFamily;
+
     public ImageSource? Thumbnail
     {
         get
@@ -307,6 +312,7 @@ public sealed partial class ClipCardViewModel : ObservableObject
         Item = item;
         OnPropertyChanged(nameof(DisplayTitle));
         OnPropertyChanged(nameof(PreviewText));
+        OnPropertyChanged(nameof(PreviewFont));
         OnPropertyChanged(nameof(MetaText));
         OnPropertyChanged(nameof(LinkTitle));
         OnPropertyChanged(nameof(LinkTitleVisibility));

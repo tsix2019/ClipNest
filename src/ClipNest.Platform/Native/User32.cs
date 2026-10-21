@@ -214,6 +214,15 @@ internal static unsafe partial class User32
 
     [LibraryImport(Lib, EntryPoint = "GetWindowLongPtrW")] public static partial nint GetWindowLongPtr(nint hwnd, int index);
     [LibraryImport(Lib, EntryPoint = "SetWindowLongPtrW")] public static partial nint SetWindowLongPtr(nint hwnd, int index, nint value);
+    [LibraryImport(Lib)][return: MarshalAs(UnmanagedType.Bool)] public static partial bool SetWindowPos(nint hwnd, nint insertAfter, int x, int y, int cx, int cy, uint flags);
+
+    public const nint WS_CAPTION = 0x00C00000; // WS_BORDER | WS_DLGFRAME
+    public const nint WS_THICKFRAME = 0x00040000;
+    public const nint WS_EX_DLGMODALFRAME = 0x00000001;
+    public const nint WS_EX_WINDOWEDGE = 0x00000100;
+    public const nint WS_EX_CLIENTEDGE = 0x00000200;
+    public const nint WS_EX_STATICEDGE = 0x00020000;
+    public const uint SWP_NOSIZE = 0x0001, SWP_NOMOVE = 0x0002, SWP_NOZORDER = 0x0004, SWP_NOACTIVATE = 0x0010, SWP_FRAMECHANGED = 0x0020;
     [LibraryImport(Lib)] [return: MarshalAs(UnmanagedType.Bool)] public static partial bool SetWindowDisplayAffinity(nint hwnd, uint affinity);
 
     [LibraryImport(Lib)] public static partial nint CreatePopupMenu();

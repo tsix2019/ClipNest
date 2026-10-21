@@ -10,6 +10,18 @@ public partial class App : Application
     public App()
     {
         InitializeComponent();
+        // Match the application theme to an explicit choice: some control states (the NavigationView
+        // selection in Settings) resolve against the application theme instead of the window's, and a
+        // light application theme under a dark window shows a white, unreadable selected item.
+        switch (AppHost.PeekThemeSetting())
+        {
+            case ThemeManager.Dark:
+                RequestedTheme = ApplicationTheme.Dark;
+                break;
+            case ThemeManager.Light:
+                RequestedTheme = ApplicationTheme.Light;
+                break;
+        }
         UnhandledException += (_, e) =>
         {
             Log.Error("Unhandled", e.Exception);

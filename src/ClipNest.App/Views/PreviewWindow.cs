@@ -45,6 +45,7 @@ public sealed partial class PreviewWindow : Window
         WindowStyler.MakeToolWindow(_hwnd);
         WindowStyler.MakeNoActivate(_hwnd);
         WindowStyler.SetRoundedCorners(_hwnd);
+        WindowStyler.RemoveFrame(_hwnd);
         WindowStyler.SetCaptureExcluded(_hwnd, host.Settings.HideFromCapture);
         SystemBackdrop = new DesktopAcrylicBackdrop();
 
@@ -104,6 +105,7 @@ public sealed partial class PreviewWindow : Window
         var x = work.X + (work.Width - w) / 2;
         var y = work.Y + (int)((work.Height - panelHeight - h) / 2);
         AppWindow.MoveAndResize(new RectInt32(x, y, w, h));
+        WindowStyler.RemoveFrame(_hwnd); // the presenter may restore its frame styles
         AppWindow.Show(false);
     }
 
@@ -218,7 +220,15 @@ public sealed partial class PreviewWindow : Window
         if (string.IsNullOrEmpty(text)) return false;
         var lines = text.Split('\n', 50);
         if (lines.Length < 3) return false;
-        var codeish = lines.Count(l => l.StartsWith("    ") || l.StartsWith('\t') || l.TrimEnd().EndsWith(';') || l.TrimEnd().EndsWith('{') || l.TrimEnd().EndsWith('}'));
+        var codeish = lines.Count(l => l.StartsWith("    ") || l.StartsWith('\t') || l.TrimEnd().EndsWith(';') || l.TrimEnd().EndsWith('{') || l.TrimEnd().EndsWith('}')
+            || CodeLineStarts.Any(s => l.StartsWith(s, StringComparison.Ordinal)));
         return codeish * 3 >= lines.Length;
     }
+
+    /// <summary>SQL keywords (upper case, as usually written) and common shell commands.</summary>
+    private static readonly string[] CodeLineStarts =
+    [
+        "SELECT ", "FROM ", "WHERE ", "GROUP BY ", "ORDER BY ", "JOIN ", "LEFT JOIN ", "INSERT ", "UPDATE ", "DELETE ", "VALUES", "LIMIT ",
+        "$ ", "git ", "npm ", "pnpm ", "yarn ", "dotnet ", "docker ", "kubectl ", "pip ", "python ", "cd ", "curl ",
+    ];
 }

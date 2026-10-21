@@ -127,6 +127,22 @@ public static class WindowStyler
         SetWindowLongPtr(hwnd, GWL_EXSTYLE, ex | WS_EX_NOACTIVATE);
     }
 
+    /// <summary>
+    /// Strips the frame styles a borderless WinUI window keeps (WS_DLGFRAME, window edge). Otherwise Windows
+    /// draws a light 1px frame just inside the rounded corners, which glares on a dark theme.
+    /// </summary>
+    public static void RemoveFrame(nint hwnd)
+    {
+        var style = GetWindowLongPtr(hwnd, GWL_STYLE);
+        var ex = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+        var newStyle = style & ~(WS_CAPTION | WS_THICKFRAME);
+        var newEx = ex & ~(WS_EX_DLGMODALFRAME | WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
+        if (newStyle == style && newEx == ex) return;
+        SetWindowLongPtr(hwnd, GWL_STYLE, newStyle);
+        SetWindowLongPtr(hwnd, GWL_EXSTYLE, newEx);
+        SetWindowPos(hwnd, 0, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
+    }
+
     /// <summary>Windows 11 rounded corners; ignored on Windows 10.</summary>
     public static void SetRoundedCorners(nint hwnd)
     {

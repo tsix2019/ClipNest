@@ -33,6 +33,7 @@
                     <TextBlock Grid.Row="1" Margin="12,10,12,4"
                                Text="{x:Bind PreviewText, Mode=OneWay}"
                                MaxLines="{x:Bind Metrics.TextMaxLines, Mode=OneWay}"
+                               FontFamily="{x:Bind PreviewFont, Mode=OneWay}"
                                Style="{StaticResource CardBodyTextStyle}" />
                     <TextBlock Grid.Row="2" Margin="12,2,12,9"
                                Text="{x:Bind MetaText, Mode=OneWay}"

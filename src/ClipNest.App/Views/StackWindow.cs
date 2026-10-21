@@ -40,6 +40,7 @@ public sealed partial class StackWindow : Window
         WindowStyler.MakeToolWindow(hwnd);
         WindowStyler.MakeNoActivate(hwnd);
         WindowStyler.SetRoundedCorners(hwnd);
+        WindowStyler.RemoveFrame(hwnd);
         WindowStyler.SetCaptureExcluded(hwnd, host.Settings.HideFromCapture);
         SystemBackdrop = new DesktopAcrylicBackdrop();
 
@@ -92,6 +93,7 @@ public sealed partial class StackWindow : Window
         var h = (int)(Math.Min(460, work.Height / scale * 0.6) * scale);
         var m = (int)(12 * scale);
         AppWindow.MoveAndResize(new RectInt32(work.X + work.Width - w - m, work.Y + work.Height - h - m, w, h));
+        WindowStyler.RemoveFrame(WinRT.Interop.WindowNative.GetWindowHandle(this)); // the presenter may restore its frame styles
         AppWindow.Show(false);
     }
 

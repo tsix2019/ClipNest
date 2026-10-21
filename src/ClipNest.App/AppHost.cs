@@ -34,10 +34,26 @@ public sealed class AppHost : IDisposable
     public AppHost(bool autostart)
     {
         _autostart = autostart;
-        // CLIPNEST_DATA lets tests and portable setups use another folder.
-        DataDirectory = Environment.GetEnvironmentVariable("CLIPNEST_DATA") is { Length: > 0 } custom
+        DataDirectory = ResolveDataDirectory();
+    }
+
+    /// <summary>CLIPNEST_DATA lets tests and portable setups use another folder.</summary>
+    private static string ResolveDataDirectory() =>
+        Environment.GetEnvironmentVariable("CLIPNEST_DATA") is { Length: > 0 } custom
             ? custom
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClipNest");
+
+    /// <summary>The saved theme choice, readable before any window exists (see <see cref="App"/>).</summary>
+    public static string PeekThemeSetting()
+    {
+        try
+        {
+            return ThemeManager.Normalize(new SettingsStore(Path.Combine(ResolveDataDirectory(), "settings.json")).Load().Theme);
+        }
+        catch (Exception)
+        {
+            return ThemeManager.System;
+        }
     }
 
     public string DataDirectory { get; }
@@ -166,6 +182,8 @@ public sealed class AppHost : IDisposable
 
         if (Environment.GetEnvironmentVariable("CLIPNEST_SNAPSHOT") is { Length: > 0 } snapshotDir)
             DevTools.RunSnapshot(this, snapshotDir);
+        else if (Environment.GetEnvironmentVariable("CLIPNEST_DEMO") is { Length: > 0 })
+            DevTools.RunDemo(this);
     }
 
     /// <summary>Registers hotkeys from settings; returns the gestures that could not be registered.</summary>
@@ -211,9 +229,12 @@ public sealed class AppHost : IDisposable
 
     // ---------- capture ----------
 
+    /// <summary>Demo mode: never record the real clipboard (screenshots must only show sample data).</summary>
+    internal bool IgnoreClipboard { get; set; }
+
     private void OnClipboardChanged()
     {
-        if (IsPaused) return;
+        if (IsPaused || IgnoreClipboard) return;
         _ = Task.Run(async () =>
         {
             await _ingestGate.WaitAsync();

@@ -6,6 +6,7 @@ namespace ClipNest.App;
 public partial class App : Application
 {
     private AppHost? _host;
+    private readonly string? _font;
 
     public App()
     {
@@ -14,7 +15,7 @@ public partial class App : Application
         // selection in Settings) resolve against the application theme instead of the window's, and a
         // light application theme under a dark window shows a white, unreadable selected item.
         var settings = AppHost.PeekSettings();
-        AppFonts.Initialize(settings.FontFamily);
+        _font = settings.FontFamily;
         switch (ThemeManager.Normalize(settings.Theme))
         {
             case ThemeManager.Dark:
@@ -40,6 +41,8 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // Not in the constructor: changing application resources there takes the process down.
+        AppFonts.Initialize(this, _font);
         _host = new AppHost(autostart: Environment.GetCommandLineArgs().Contains(StartupRegistration.AutostartArgument));
         _host.Start();
     }

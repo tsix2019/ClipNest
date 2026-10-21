@@ -25,11 +25,23 @@ public static class Program
         }
     }
 
+    /// <summary>
+    /// One instance per data folder: a portable or test copy with its own CLIPNEST_DATA runs next to the
+    /// installed one instead of just poking it.
+    /// </summary>
+    private static string InstanceName()
+    {
+        var data = Environment.GetEnvironmentVariable("CLIPNEST_DATA");
+        if (string.IsNullOrEmpty(data)) return "ClipNest.SingleInstance";
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(Path.GetFullPath(data).ToUpperInvariant()));
+        return "ClipNest.SingleInstance." + Convert.ToHexString(hash, 0, 8);
+    }
+
     [STAThread]
     private static int Main()
     {
         WaitForRestartedInstance();
-        _instance = SingleInstance.TryAcquire("ClipNest.SingleInstance");
+        _instance = SingleInstance.TryAcquire(InstanceName());
         if (_instance is null)
         {
             // Already running: ask it to show the panel and leave.

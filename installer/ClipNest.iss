@@ -48,8 +48,8 @@ LicenseFile=..\LICENSE
 
 [Languages]
 Name: "en"; MessagesFile: "compiler:Default.isl"
-#ifexist "ChineseSimplified.isl"
-Name: "zh"; MessagesFile: "ChineseSimplified.isl"
+#if FileExists(CompilerPath + "Languages\ChineseSimplified.isl")
+Name: "zh"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 #endif
 
 [Tasks]

@@ -110,9 +110,6 @@ jobs:
           New-Item -ItemType Directory -Force dist | Out-Null
 
           choco install innosetup -y --no-progress | Out-Null
-          try {
-            Invoke-WebRequest https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/ChineseSimplified.isl -OutFile installer/ChineseSimplified.isl
-          } catch { Write-Warning "Chinese installer messages unavailable: $_" }
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q "/DAppVersion=$version" "/DArch=$arch" "/DSourceDir=$source" "/DOutputDir=$PWD\dist" installer\ClipNest.iss
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed" }
 

@@ -144,6 +144,15 @@ public sealed class PasteInjector : IDisposable
         SendInput(1, &input, sizeof(INPUT));
     }
 
+    /// <summary>Presses and releases one key (tagged as ours, so our hooks ignore it).</summary>
+    public static unsafe void TapKey(ushort vk)
+    {
+        var inputs = stackalloc INPUT[2];
+        inputs[0] = Key(vk, up: false);
+        inputs[1] = Key(vk, up: true);
+        SendInput(2, inputs, sizeof(INPUT));
+    }
+
     public static unsafe void SendCtrlV()
     {
         var inputs = stackalloc INPUT[4];

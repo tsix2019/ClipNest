@@ -88,7 +88,18 @@
         </Setter>
     </Style>
 
+    <!-- Plain TextBlocks follow the interface font (Settings > Font) like controls do. -->
+    <Style TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
+    </Style>
+
+    <!-- Cards stacked vertically (panel on the left/right edge). -->
+    <Style x:Key="VerticalCardContainerStyle" TargetType="ListViewItem" BasedOn="{StaticResource CardContainerStyle}">
+        <Setter Property="Margin" Value="0,5" />
+    </Style>
+
     <Style x:Key="CardTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
         <Setter Property="FontSize" Value="13" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -96,6 +107,7 @@
     </Style>
 
     <Style x:Key="CardMetaStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
         <Setter Property="FontSize" Value="11" />
         <Setter Property="Foreground" Value="{ThemeResource CardSubtleTextBrush}" />
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />

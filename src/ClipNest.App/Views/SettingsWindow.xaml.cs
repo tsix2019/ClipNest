@@ -11,6 +11,11 @@ namespace ClipNest.App.Views;
 
 public sealed partial class SettingsWindow : Window
 {
+    private const string ContactEmail = "tsix2019@gmail.com";
+
+    private static readonly Core.Settings.PanelEdge[] EdgeOrder =
+        [Core.Settings.PanelEdge.Bottom, Core.Settings.PanelEdge.Top, Core.Settings.PanelEdge.Left, Core.Settings.PanelEdge.Right];
+
     private static readonly RetentionPeriod[] RetentionOrder =
         [RetentionPeriod.Day, RetentionPeriod.Week, RetentionPeriod.Month, RetentionPeriod.Year, RetentionPeriod.Forever];
 
@@ -71,6 +76,16 @@ public sealed partial class SettingsWindow : Window
         ThemeBox.Items.Add(Loc.Get("Theme_Dark"));
         ThemeBox.SelectedIndex = ThemeManager.Normalize(s.Theme) switch { ThemeManager.Light => 1, ThemeManager.Dark => 2, _ => 0 };
 
+        foreach (var edge in EdgeOrder) EdgeBox.Items.Add(Loc.Get("Edge_" + edge));
+        EdgeBox.SelectedIndex = Math.Max(0, Array.IndexOf(EdgeOrder, s.PanelEdge));
+
+        // The installed fonts are listed when the box opens (a few hundred items, not needed until then).
+        FontBox.Items.Add(Loc.Get("Settings_FontSystem"));
+        if (!string.IsNullOrWhiteSpace(s.FontFamily)) FontBox.Items.Add(s.FontFamily);
+        FontBox.SelectedIndex = FontBox.Items.Count - 1;
+        FontBox.DropDownOpened += (_, _) => FillFonts();
+        FontRestartBar.IsOpen = false;
+
         StartupToggle.IsOn = s.LaunchAtStartup;
 
         foreach (var p in RetentionOrder) RetentionBox.Items.Add(Loc.Get("Retention_" + p));
@@ -89,6 +104,7 @@ public sealed partial class SettingsWindow : Window
         PanelHotkeyBox.Gesture = panel;
         StackHotkeyBox.Gesture = stack;
         HotkeyError.IsOpen = false;
+        WinVToggle.IsOn = s.UseWinV;
         KeysHelp.Text = Loc.Get("Settings_KeysHelp");
 
         ConfidentialToggle.IsOn = s.IgnoreConfidential;
@@ -100,6 +116,8 @@ public sealed partial class SettingsWindow : Window
 
         VersionText.Text = Loc.Format("Settings_Version", typeof(SettingsWindow).Assembly.GetName().Version?.ToString(3));
         DataFolderRow.Description = _host.DataDirectory;
+        GitHubRow.Description = UpdateChecker.RepositoryUrl;
+        ContactRow.Description = ContactEmail;
         StatsRow.Description = Loc.Format("Settings_StatsValue", _host.Repository.Count(), _host.Repository.GetPinboards().Count);
     }
 
@@ -130,6 +148,46 @@ public sealed partial class SettingsWindow : Window
         Save();
         ThemeManager.SetMode(_host.Settings.Theme);
     }
+
+    private void EdgeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || EdgeBox.SelectedIndex < 0) return;
+        _host.Settings.PanelEdge = EdgeOrder[EdgeBox.SelectedIndex];
+        Save(); // used from the next time the panel opens
+    }
+
+    private bool _fontsFilled;
+
+    private void FillFonts()
+    {
+        if (_fontsFilled) return;
+        _fontsFilled = true;
+        var current = _host.Settings.FontFamily;
+        _loading = true;
+        FontBox.Items.Clear();
+        FontBox.Items.Add(Loc.Get("Settings_FontSystem"));
+        foreach (var family in FontList.SystemFamilies()) FontBox.Items.Add(family);
+        var index = string.IsNullOrWhiteSpace(current) ? 0 : FontBox.Items.IndexOf(current);
+        if (index < 0)
+        {
+            FontBox.Items.Add(current); // no longer installed: keep showing the saved choice
+            index = FontBox.Items.Count - 1;
+        }
+        FontBox.SelectedIndex = index;
+        _loading = false;
+    }
+
+    private void FontBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || FontBox.SelectedIndex < 0) return;
+        var family = FontBox.SelectedIndex == 0 ? null : FontBox.SelectedItem as string;
+        if (family == _host.Settings.FontFamily) return;
+        _host.Settings.FontFamily = family;
+        Save();
+        FontRestartBar.IsOpen = true;
+    }
+
+    private void Restart_Click(object sender, RoutedEventArgs e) => _host.Restart();
 
     private void StartupToggle_Toggled(object sender, RoutedEventArgs e)
     {
@@ -263,6 +321,14 @@ public sealed partial class SettingsWindow : Window
             Save();
         }
         HotkeyError.IsOpen = failed;
+    }
+
+    private void WinVToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _host.Settings.UseWinV = WinVToggle.IsOn;
+        Save();
+        _host.ApplyWinV();
     }
 
     private void ResetShortcuts_Click(object sender, RoutedEventArgs e)
@@ -468,4 +534,56 @@ public sealed partial class SettingsWindow : Window
     // ---------- about ----------
 
     private void OpenFolder_Click(object sender, RoutedEventArgs e) => _host.OpenDataFolder();
+
+    private string? _updateUrl;
+
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        UpdateButton.IsEnabled = false;
+        UpdateProgress.IsActive = true;
+        UpdateLink.Visibility = Visibility.Collapsed;
+        try
+        {
+            var current = typeof(SettingsWindow).Assembly.GetName().Version ?? new Version(0, 0);
+            var update = await UpdateChecker.CheckAsync(current);
+            if (update is null)
+            {
+                UpdateRow.Description = Loc.Get("Settings_UpToDate");
+            }
+            else
+            {
+                _updateUrl = update.PageUrl;
+                UpdateRow.Description = Loc.Format("Settings_UpdateAvailable", update.Version.ToString(3));
+                UpdateLink.Content = Loc.Get("Settings_OpenRelease");
+                UpdateLink.Visibility = Visibility.Visible;
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Warn($"Update check failed: {ex.Message}");
+            UpdateRow.Description = Loc.Get("Settings_UpdateFailed");
+        }
+        finally
+        {
+            UpdateProgress.IsActive = false;
+            UpdateButton.IsEnabled = true;
+        }
+    }
+
+    private void UpdateLink_Click(object sender, RoutedEventArgs e) => OpenUrl(_updateUrl ?? UpdateChecker.ReleasesUrl);
+
+    private void GitHub_Click(object sender, RoutedEventArgs e) => OpenUrl(UpdateChecker.RepositoryUrl);
+
+    private void SendEmail_Click(object sender, RoutedEventArgs e) => OpenUrl("mailto:" + ContactEmail);
+
+    private void CopyEmail_Click(object sender, RoutedEventArgs e)
+    {
+        var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+        package.SetText(ContactEmail);
+        Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+        ContactRow.Description = Loc.Format("Settings_EmailCopied", ContactEmail);
+    }
+
+    private static void OpenUrl(string url) =>
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
 }

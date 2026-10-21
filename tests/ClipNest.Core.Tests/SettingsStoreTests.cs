@@ -38,6 +38,29 @@ public sealed class SettingsStoreTests : IDisposable
     }
 
     [Fact]
+    public void New_1_1_settings_roundtrip_and_default_for_old_files()
+    {
+        File.WriteAllText(_path, """{ "Theme": "dark" }""");
+        var old = new SettingsStore(_path).Load();
+        Assert.Equal(PanelEdge.Bottom, old.PanelEdge);
+        Assert.False(old.UseWinV);
+        Assert.Null(old.FontFamily);
+
+        old.PanelEdge = PanelEdge.Right;
+        old.PanelWidth = 400;
+        old.UseWinV = true;
+        old.FontFamily = "微软雅黑";
+        new SettingsStore(_path).Save(old);
+
+        var r = new SettingsStore(_path).Load();
+        Assert.Equal(PanelEdge.Right, r.PanelEdge);
+        Assert.Equal(400, r.PanelWidth);
+        Assert.True(r.UseWinV);
+        Assert.Equal("微软雅黑", r.FontFamily);
+        Assert.Contains("\"Right\"", File.ReadAllText(_path));
+    }
+
+    [Fact]
     public void Corrupt_file_gives_defaults()
     {
         File.WriteAllText(_path, "{nope");

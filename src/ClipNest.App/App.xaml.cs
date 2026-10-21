@@ -13,7 +13,9 @@ public partial class App : Application
         // Match the application theme to an explicit choice: some control states (the NavigationView
         // selection in Settings) resolve against the application theme instead of the window's, and a
         // light application theme under a dark window shows a white, unreadable selected item.
-        switch (AppHost.PeekThemeSetting())
+        var settings = AppHost.PeekSettings();
+        AppFonts.Initialize(settings.FontFamily);
+        switch (ThemeManager.Normalize(settings.Theme))
         {
             case ThemeManager.Dark:
                 RequestedTheme = ApplicationTheme.Dark;

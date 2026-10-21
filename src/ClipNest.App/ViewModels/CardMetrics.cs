@@ -36,6 +36,21 @@ public sealed partial class CardMetrics : ObservableObject
     public CornerRadius BodyCornerRadius => Compact ? new CornerRadius(0, 0, 12, 12) : new CornerRadius(0);
     public int TextMaxLines => Compact ? 4 : 9;
 
+    /// <summary>Space the card list takes around each card along the scrolling axis (container margin + ring room).</summary>
+    public const double HorizontalStride = 20; // 7 + 7 margin, 3 + 3 presenter padding
+    public const double VerticalStride = 16;   // 5 + 5 margin, 3 + 3 presenter padding
+
+    /// <summary>Card list padding inside a left/right panel, left + right (see PanelWindow.ApplyEdge).</summary>
+    public const double VerticalListPadding = 28;
+
+    /// <summary>Recomputes card size for a left/right panel <paramref name="panelWidth"/> DIPs wide.</summary>
+    public void UpdateVertical(double panelWidth)
+    {
+        Compact = false;
+        Width = Math.Max(160, panelWidth - VerticalListPadding - 6 - 2);
+        Height = Math.Clamp(Math.Round(Width * 0.62), 150, 240);
+    }
+
     /// <summary>Recomputes card size for a panel of <paramref name="panelHeight"/> DIPs.</summary>
     public void Update(double panelHeight)
     {

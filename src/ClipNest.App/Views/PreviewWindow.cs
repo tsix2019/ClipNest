@@ -98,12 +98,21 @@ public sealed partial class PreviewWindow : Window
         _subtitle.Text = string.Join("  ·  ", new[] { app.Name, Loc.RelativeTime(item.CreatedAt, DateTimeOffset.Now) }.Where(s => s.Length > 0));
         _content.Content = Build(item);
 
+        // Centered in the part of the screen the panel leaves free.
         var (work, scale) = DisplayHelper.GetCursorMonitor();
-        var panelHeight = (_host.Settings.PanelHeight + 16) * scale;
-        var w = (int)(work.Width * 0.56);
-        var h = (int)Math.Max(240 * scale, (work.Height - panelHeight) * 0.86);
-        var x = work.X + (work.Width - w) / 2;
-        var y = work.Y + (int)((work.Height - panelHeight - h) / 2);
+        var panel = PanelWindow.DockedRect(_host.Settings, work, scale);
+        var gap = (int)(8 * scale);
+        var (fx, fy, fw, fh) = _host.Settings.PanelEdge switch
+        {
+            Core.Settings.PanelEdge.Top => (work.X, panel.Y + panel.Height + gap, work.Width, work.Y + work.Height - panel.Y - panel.Height - gap),
+            Core.Settings.PanelEdge.Left => (panel.X + panel.Width + gap, work.Y, work.X + work.Width - panel.X - panel.Width - gap, work.Height),
+            Core.Settings.PanelEdge.Right => (work.X, work.Y, panel.X - gap - work.X, work.Height),
+            _ => (work.X, work.Y, work.Width, panel.Y - gap - work.Y),
+        };
+        var w = (int)Math.Min(fw * 0.9, work.Width * 0.56);
+        var h = (int)Math.Max(240 * scale, fh * 0.86);
+        var x = fx + (fw - w) / 2;
+        var y = fy + (fh - h) / 2;
         AppWindow.MoveAndResize(new RectInt32(x, y, w, h));
         WindowStyler.RemoveFrame(_hwnd); // the presenter may restore its frame styles
         AppWindow.Show(false);
@@ -166,7 +175,7 @@ public sealed partial class PreviewWindow : Window
                     FontSize = 14,
                     LineHeight = 21,
                     TextWrapping = TextWrapping.Wrap,
-                    FontFamily = LooksLikeCode(item.Text) ? new FontFamily("Cascadia Mono, Consolas") : FontFamily.XamlAutoFontFamily,
+                    FontFamily = LooksLikeCode(item.Text) ? new FontFamily("Cascadia Mono, Consolas") : AppFonts.Ui,
                 });
         }
 

@@ -182,66 +182,71 @@
                 ColorTemplate="{StaticResource ColorCardTemplate}"
                 FileTemplate="{StaticResource FileCardTemplate}" />
 
+            <!-- The window itself slides in from its edge (PanelWindow.StartSlide); the content fades. -->
             <Storyboard x:Name="ShowStoryboard">
-                <DoubleAnimation Storyboard.TargetName="RootTranslate" Storyboard.TargetProperty="Y"
-                                 From="36" To="0" Duration="0:0:0.22">
-                    <DoubleAnimation.EasingFunction>
-                        <ExponentialEase EasingMode="EaseOut" Exponent="6" />
-                    </DoubleAnimation.EasingFunction>
-                </DoubleAnimation>
                 <DoubleAnimation Storyboard.TargetName="Root" Storyboard.TargetProperty="Opacity"
-                                 From="0" To="1" Duration="0:0:0.16" />
+                                 From="0" To="1" Duration="0:0:0.18" />
             </Storyboard>
 
             <Storyboard x:Name="HideStoryboard">
-                <DoubleAnimation Storyboard.TargetName="RootTranslate" Storyboard.TargetProperty="Y"
-                                 To="24" Duration="0:0:0.12">
-                    <DoubleAnimation.EasingFunction>
-                        <QuadraticEase EasingMode="EaseIn" />
-                    </DoubleAnimation.EasingFunction>
-                </DoubleAnimation>
                 <DoubleAnimation Storyboard.TargetName="Root" Storyboard.TargetProperty="Opacity"
                                  To="0" Duration="0:0:0.12" />
             </Storyboard>
+
+            <ItemsPanelTemplate x:Key="HorizontalCardsPanel">
+                <ItemsStackPanel Orientation="Horizontal" />
+            </ItemsPanelTemplate>
+            <ItemsPanelTemplate x:Key="VerticalCardsPanel">
+                <ItemsStackPanel Orientation="Vertical" />
+            </ItemsPanelTemplate>
         </Grid.Resources>
 
         <Grid.RowDefinitions>
-            <RowDefinition Height="52" />
+            <RowDefinition x:Name="TopRow" Height="52" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Top-edge resize grip -->
+        <!-- Resize grip on the panel's inner edge (placed by PanelWindow.ApplyEdge) -->
         <views:SizingGrip x:Name="ResizeGrip" Height="8" VerticalAlignment="Top" Background="Transparent"
                 PointerPressed="ResizeGrip_PointerPressed"
                 PointerMoved="ResizeGrip_PointerMoved"
                 PointerReleased="ResizeGrip_PointerReleased"
                 PointerCaptureLost="ResizeGrip_PointerCaptureLost"
                 Canvas.ZIndex="10">
-            <Border Width="36" Height="4" CornerRadius="2" Margin="0,3,0,0" VerticalAlignment="Top"
+            <Border x:Name="GripBar" Width="36" Height="4" CornerRadius="2" Margin="0,3,0,0" VerticalAlignment="Top"
                     Background="{ThemeResource ControlStrongStrokeColorDefaultBrush}" Opacity="0.5" />
         </views:SizingGrip>
 
         <!-- ===== Top bar ===== -->
-        <Grid Grid.Row="0" Padding="18,10,12,2" ColumnSpacing="10">
+        <!-- One row along the top/bottom edge; on the left/right edge the tabs move below the search box. -->
+        <Grid x:Name="TopBar" Grid.Row="0" Padding="18,10,12,2" ColumnSpacing="10" RowSpacing="6">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="SearchColumn" Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <Grid x:Name="SearchArea" ColumnSpacing="4" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
                 <TextBox x:Name="SearchBox" Width="260" Height="34" VerticalAlignment="Center"
                          PlaceholderText="{l:Tr Key=Panel_Search}"
                          CornerRadius="9"
                          TextChanged="SearchBox_TextChanged"
                          IsSpellCheckEnabled="False" />
-                <Button x:Name="FilterButton" Style="{StaticResource IconButtonStyle}" Click="FilterButton_Click"
+                <Button x:Name="FilterButton" Grid.Column="1" Style="{StaticResource IconButtonStyle}" Click="FilterButton_Click"
                         ToolTipService.ToolTip="{l:Tr Key=Filter_Button}">
                     <FontIcon Glyph="&#xE71C;" FontSize="14" />
                 </Button>
-            </StackPanel>
+            </Grid>
 
-            <ScrollViewer Grid.Column="1" HorizontalScrollMode="Auto" HorizontalScrollBarVisibility="Hidden"
+            <ScrollViewer x:Name="TabsScroller" Grid.Column="1" HorizontalScrollMode="Auto" HorizontalScrollBarVisibility="Hidden"
                           VerticalScrollMode="Disabled" VerticalScrollBarVisibility="Disabled">
                 <StackPanel Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
                     <ItemsRepeater x:Name="TabsRepeater" ItemsSource="{x:Bind ViewModel.Tabs}">
@@ -275,7 +280,7 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <StackPanel x:Name="RightButtons" Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
                 <Button x:Name="PausedPill" Visibility="Collapsed" Click="PausedPill_Click"
                         CornerRadius="12" Padding="10,3" BorderThickness="0"
                         Background="{ThemeResource SystemFillColorCautionBackgroundBrush}">
@@ -283,6 +288,10 @@
                         <FontIcon Glyph="&#xE769;" FontSize="12" />
                         <TextBlock Text="{l:Tr Key=Panel_Paused}" FontSize="12" />
                     </StackPanel>
+                </Button>
+                <Button x:Name="NewTextButton" Style="{StaticResource IconButtonStyle}" Click="NewText_Click"
+                        ToolTipService.ToolTip="{l:Tr Key=Panel_NewText}">
+                    <FontIcon Glyph="&#xE70F;" FontSize="14" />
                 </Button>
                 <Button Style="{StaticResource IconButtonStyle}" Click="Settings_Click"
                         ToolTipService.ToolTip="{l:Tr Key=Panel_Settings}">
@@ -302,17 +311,13 @@
                   DragItemsStarting="CardList_DragItemsStarting"
                   DoubleTapped="CardList_DoubleTapped"
                   RightTapped="CardList_RightTapped"
+                  ItemsPanel="{StaticResource HorizontalCardsPanel}"
                   Padding="11,8,11,14"
                   ScrollViewer.HorizontalScrollMode="Enabled"
                   ScrollViewer.HorizontalScrollBarVisibility="Hidden"
                   ScrollViewer.VerticalScrollMode="Disabled"
                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
                   ScrollViewer.IsHorizontalRailEnabled="True">
-            <ListView.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <ItemsStackPanel Orientation="Horizontal" />
-                </ItemsPanelTemplate>
-            </ListView.ItemsPanel>
             <ListView.ItemContainerTransitions>
                 <TransitionCollection>
                     <AddDeleteThemeTransition />

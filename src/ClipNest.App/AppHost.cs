@@ -30,6 +30,7 @@ public sealed class AppHost : IDisposable
     private DispatcherQueueTimer? _startupTrimTimer;
     private nint _trayIcon;
     private SettingsWindow? _settingsWindow;
+    private WinVHook? _winV;
 
     public AppHost(bool autostart)
     {
@@ -43,16 +44,16 @@ public sealed class AppHost : IDisposable
             ? custom
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ClipNest");
 
-    /// <summary>The saved theme choice, readable before any window exists (see <see cref="App"/>).</summary>
-    public static string PeekThemeSetting()
+    /// <summary>The saved settings, readable before any window exists (theme and font, see <see cref="App"/>).</summary>
+    public static AppSettings PeekSettings()
     {
         try
         {
-            return ThemeManager.Normalize(new SettingsStore(Path.Combine(ResolveDataDirectory(), "settings.json")).Load().Theme);
+            return new SettingsStore(Path.Combine(ResolveDataDirectory(), "settings.json")).Load();
         }
         catch (Exception)
         {
-            return ThemeManager.System;
+            return new AppSettings();
         }
     }
 
@@ -136,6 +137,7 @@ public sealed class AppHost : IDisposable
         Stack = new PasteStack(this);
 
         var failed = RegisterHotkeys();
+        ApplyWinV();
         if (failed.Count > 0)
             Tray.ShowNotification(Loc.Get("Notify_HotkeyFailedTitle"), Loc.Format("Notify_HotkeyFailed", string.Join(", ", failed)));
         else if (!Settings.OnboardingDone && !_autostart && Environment.GetEnvironmentVariable("CLIPNEST_SNAPSHOT") is null)
@@ -195,6 +197,22 @@ public sealed class AppHost : IDisposable
         if (HotkeyGesture.TryParse(Settings.StackHotkey, out var stack) && !Hotkeys.Register(StackHotkeyId, stack))
             failed.Add(Settings.StackHotkey);
         return failed;
+    }
+
+    /// <summary>Installs or removes the Win+V hook to match the setting.</summary>
+    public void ApplyWinV()
+    {
+        if (Settings.UseWinV == (_winV is not null)) return;
+        if (Settings.UseWinV)
+        {
+            _winV = new WinVHook();
+            _winV.Pressed += () => UI.TryEnqueue(TogglePanel);
+        }
+        else
+        {
+            _winV!.Dispose();
+            _winV = null;
+        }
     }
 
     public void SyncStartupRegistration()
@@ -433,6 +451,57 @@ public sealed class AppHost : IDisposable
         }
     }
 
+    /// <summary>
+    /// Saves user-written text into a pinboard (null: the "Snippets" pinboard, created on first use).
+    /// Text that already exists is moved into the pinboard instead of duplicated.
+    /// </summary>
+    public ClipItem CreateSnippet(string text, string? title, long? pinboardId)
+    {
+        var kind = ClipClassifier.TryClassify(new ClipboardSnapshot { Text = text }) ?? ClipKind.Text;
+        if (kind is ClipKind.Image or ClipKind.File) kind = ClipKind.Text;
+        text = kind switch
+        {
+            ClipKind.Color when ClipClassifier.TryParseColor(text, out var hex) => hex,
+            ClipKind.Link => text.Trim(),
+            _ => ContentHasher.NormalizeText(text),
+        };
+        var board = pinboardId ?? SnippetsPinboard();
+        var hash = ContentHasher.ForText(kind, text);
+        var item = Exclusive(() =>
+        {
+            if (Repository.FindByHash(hash) is { } existing)
+            {
+                Repository.SetPinboard(existing.Id, board);
+                if (!string.IsNullOrWhiteSpace(title)) Repository.Rename(existing.Id, title);
+                return Repository.Get(existing.Id)!;
+            }
+            var created = new ClipItem
+            {
+                Kind = kind,
+                Title = string.IsNullOrWhiteSpace(title) ? null : title.Trim(),
+                Text = text,
+                ContentHash = hash,
+                SourceAppName = "ClipNest",
+                CreatedAt = DateTimeOffset.Now,
+                PinboardId = board,
+                CharCount = text.Length,
+            };
+            Repository.Insert(created);
+            return created;
+        });
+        Panel.ViewModel.ReloadTabs();
+        ItemChanged?.Invoke(item);
+        return item;
+    }
+
+    /// <summary>The pinboard that "New text" on the history tab writes to.</summary>
+    private long SnippetsPinboard()
+    {
+        var name = Loc.Get("Snippets_Pinboard");
+        return Repository.GetPinboards().FirstOrDefault(p => p.Name == name)?.Id
+            ?? Repository.AddPinboard(name, colorIndex: 2);
+    }
+
     /// <summary>Pins items to the top of every list, or unpins them.</summary>
     public void SetTop(IEnumerable<ClipItem> items, bool top)
     {
@@ -650,6 +719,7 @@ public sealed class AppHost : IDisposable
     public void Dispose()
     {
         Stack?.Dispose();
+        _winV?.Dispose();
         Enricher?.Dispose();
         Injector?.Dispose();
         // Let an in-flight capture or maintenance pass finish before closing the database.

@@ -83,7 +83,7 @@ public sealed partial class ClipCardViewModel : ObservableObject
     private static readonly FontFamily MonoFont = new("Cascadia Mono, Consolas");
 
     /// <summary>Code keeps its shape in a monospace font.</summary>
-    public FontFamily PreviewFont => Views.PreviewWindow.LooksLikeCode(Item.Text) ? MonoFont : FontFamily.XamlAutoFontFamily;
+    public FontFamily PreviewFont => Views.PreviewWindow.LooksLikeCode(Item.Text) ? MonoFont : AppFonts.Ui;
 
     public ImageSource? Thumbnail
     {

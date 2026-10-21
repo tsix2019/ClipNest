@@ -1,5 +1,6 @@
 using ClipNest.App.ViewModels;
 using ClipNest.Core;
+using ClipNest.Core.Settings;
 using ClipNest.Platform;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Input;
@@ -25,7 +26,11 @@ public sealed partial class PanelWindow : Window
 {
     private const double MinPanelHeight = 200;
     private const double MaxPanelHeight = 520;
+    private const double MinPanelWidth = 280;
+    private const double MaxPanelWidth = 600;
     private const double EdgeMargin = 8;
+    private const double SlideInMs = 230;
+    private const double SlideOutMs = 130;
 
     private readonly AppHost _host;
     private readonly nint _hwnd;
@@ -33,7 +38,16 @@ public sealed partial class PanelWindow : Window
     private readonly DispatcherQueueTimer _clockTimer;
     private readonly DispatcherQueueTimer _unloadTimer;
     private readonly DispatcherQueueTimer _hideTimer;
+    private readonly DispatcherQueueTimer _slideTimer;
+    private readonly System.Diagnostics.Stopwatch _slideClock = new();
+    private PointInt32 _slideFrom;
+    private PointInt32 _slideTo;
+    private double _slideMs;
+    private bool _slideOut;
     private ScrollViewer? _scroller;
+    private PanelEdge _edge = PanelEdge.Bottom;
+    private bool _edgeApplied;
+    private bool _focusAfterScroll;
     private bool _shown;
     private bool _hiding;
     private bool _showing;
@@ -41,8 +55,8 @@ public sealed partial class PanelWindow : Window
 
     // resize-by-dragging state
     private bool _resizing;
-    private int _resizeStartY;
-    private double _resizeStartHeight;
+    private PointInt32 _resizeStart;
+    private double _resizeStartSize;
     private double _scale = 1;
     private PixelRect _workArea;
 
@@ -83,6 +97,11 @@ public sealed partial class PanelWindow : Window
         {
             if (_hiding) HideNow();
         };
+
+        // A timer, not CompositionTarget.Rendering: it also runs when nothing is composed (see HidePanel).
+        _slideTimer = ui.CreateTimer();
+        _slideTimer.Interval = TimeSpan.FromMilliseconds(8);
+        _slideTimer.Tick += (_, _) => SlideStep();
 
         Activated += OnActivated;
         host.Ingested += ViewModel.OnIngested;
@@ -168,12 +187,16 @@ public sealed partial class PanelWindow : Window
         }
         if (_showCancelled) return; // HideNow() ran while loading (e.g. Paste Stack opened)
 
+        ApplyEdge();
         PositionOnCursorMonitor();
         SystemBackdrop ??= new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
         Root.Opacity = 0;
         _shown = true;
         WindowStyler.RemoveFrame(_hwnd); // the presenter may restore its frame styles
+        var target = PanelRect();
+        AppWindow.Move(Offscreen(target));
         AppWindow.Show(true);
+        StartSlide(new PointInt32(target.X, target.Y), SlideInMs, slideOut: false);
         Activate();
         if (!WindowStyler.BringToFront(_hwnd)) Log.Warn("Panel could not take the foreground");
         ShowStoryboard.Begin();
@@ -213,7 +236,8 @@ public sealed partial class PanelWindow : Window
         _hideTimer.Stop();
         HideStoryboard.Stop();
         Root.Opacity = 1;
-        RootTranslate.Y = 0;
+        var target = PanelRect();
+        StartSlide(new PointInt32(target.X, target.Y), SlideInMs / 2, slideOut: false);
     }
 
     /// <summary>Animated hide (Esc, click outside, hotkey).</summary>
@@ -222,6 +246,7 @@ public sealed partial class PanelWindow : Window
         if (!_shown || _hiding) return;
         _hiding = true;
         HideStoryboard.Begin();
+        StartSlide(Offscreen(PanelRect()), SlideOutMs, slideOut: true);
         // A timer rather than Storyboard.Completed: animations do not tick when nothing is
         // composed (locked session, display off), and the panel must still go away.
         _hideTimer.Stop();
@@ -234,6 +259,7 @@ public sealed partial class PanelWindow : Window
         if (_showing) _showCancelled = true;
         _hiding = false;
         _hideTimer.Stop();
+        _slideTimer.Stop();
         PreviewWindow.Close(this);
         if (!_shown) return;
         _shown = false;
@@ -249,18 +275,147 @@ public sealed partial class PanelWindow : Window
             HidePanel();
     }
 
+    private bool IsVertical => _edge is PanelEdge.Left or PanelEdge.Right;
+
     private void PositionOnCursorMonitor()
     {
         (_workArea, _scale) = DisplayHelper.GetCursorMonitor();
-        ApplyHeight(_host.Settings.PanelHeight);
+        ApplySize();
     }
 
-    private void ApplyHeight(double heightDip)
+    /// <summary>Moves/resizes the window to its docked place and sizes the cards to match.</summary>
+    private void ApplySize()
     {
-        var h = (int)Math.Round(heightDip * _scale);
+        AppWindow.MoveAndResize(PanelRect());
+        if (IsVertical) ViewModel.Metrics.UpdateVertical(_host.Settings.PanelWidth);
+        else ViewModel.Metrics.Update(_host.Settings.PanelHeight);
+    }
+
+    /// <summary>The panel's docked rectangle (physical pixels) on the current monitor.</summary>
+    private RectInt32 PanelRect() => DockedRect(_host.Settings, _workArea, _scale);
+
+    /// <summary>Where a panel with these settings sits inside <paramref name="work"/> (physical pixels).</summary>
+    public static RectInt32 DockedRect(AppSettings settings, PixelRect work, double scale)
+    {
+        var m = (int)Math.Round(EdgeMargin * scale);
+        var h = (int)Math.Round(settings.PanelHeight * scale);
+        var w = (int)Math.Round(settings.PanelWidth * scale);
+        return settings.PanelEdge switch
+        {
+            PanelEdge.Top => new RectInt32(work.X + m, work.Y + m, work.Width - 2 * m, h),
+            PanelEdge.Left => new RectInt32(work.X + m, work.Y + m, w, work.Height - 2 * m),
+            PanelEdge.Right => new RectInt32(work.X + work.Width - w - m, work.Y + m, w, work.Height - 2 * m),
+            _ => new RectInt32(work.X + m, work.Y + work.Height - h - m, work.Width - 2 * m, h),
+        };
+    }
+
+    /// <summary>The panel pushed just past its screen edge: where the slide starts and ends.</summary>
+    private PointInt32 Offscreen(RectInt32 r)
+    {
         var m = (int)Math.Round(EdgeMargin * _scale);
-        AppWindow.MoveAndResize(new RectInt32(_workArea.X + m, _workArea.Y + _workArea.Height - h - m, _workArea.Width - 2 * m, h));
-        ViewModel.Metrics.Update(heightDip);
+        return _edge switch
+        {
+            PanelEdge.Top => new PointInt32(r.X, r.Y - r.Height - m),
+            PanelEdge.Left => new PointInt32(r.X - r.Width - m, r.Y),
+            PanelEdge.Right => new PointInt32(r.X + r.Width + m, r.Y),
+            _ => new PointInt32(r.X, r.Y + r.Height + m),
+        };
+    }
+
+    // ---------- slide animation ----------
+
+    private void StartSlide(PointInt32 to, double milliseconds, bool slideOut)
+    {
+        _slideFrom = AppWindow.Position;
+        _slideTo = to;
+        _slideMs = milliseconds;
+        _slideOut = slideOut;
+        _slideClock.Restart();
+        _slideTimer.Start();
+        SlideStep();
+    }
+
+    private void SlideStep()
+    {
+        var t = Math.Clamp(_slideClock.Elapsed.TotalMilliseconds / _slideMs, 0, 1);
+        // Ease-out (quint) coming in, ease-in (cubic) going away.
+        var e = _slideOut ? t * t * t : 1 - Math.Pow(1 - t, 5);
+        AppWindow.Move(new PointInt32(
+            (int)Math.Round(_slideFrom.X + (_slideTo.X - _slideFrom.X) * e),
+            (int)Math.Round(_slideFrom.Y + (_slideTo.Y - _slideFrom.Y) * e)));
+        if (t >= 1) _slideTimer.Stop();
+    }
+
+    // ---------- edge layout ----------
+
+    /// <summary>Lays the panel out for its screen edge: card direction, top bar and resize grip.</summary>
+    private void ApplyEdge()
+    {
+        var edge = _host.Settings.PanelEdge;
+        if (_edgeApplied && edge == _edge) return;
+        _edge = edge;
+        _edgeApplied = true;
+        var vertical = IsVertical;
+
+        // Top bar: one row, or (side edges) search + buttons above the tabs.
+        TopRow.Height = new GridLength(vertical ? 96 : 52);
+        SearchColumn.Width = vertical ? new GridLength(1, GridUnitType.Star) : GridLength.Auto;
+        SearchBox.Width = vertical ? double.NaN : 260;
+        Grid.SetColumnSpan(SearchArea, vertical ? 2 : 1);
+        Grid.SetRow(TabsScroller, vertical ? 1 : 0);
+        Grid.SetColumn(TabsScroller, vertical ? 0 : 1);
+        Grid.SetColumnSpan(TabsScroller, vertical ? 3 : 1);
+
+        // Cards
+        CardList.ItemsPanel = (ItemsPanelTemplate)Root.Resources[vertical ? "VerticalCardsPanel" : "HorizontalCardsPanel"];
+        CardList.ItemContainerStyle = (Style)Application.Current.Resources[vertical ? "VerticalCardContainerStyle" : "CardContainerStyle"];
+        CardList.Padding = vertical ? new Thickness(CardMetrics.VerticalListPadding / 2, 2, CardMetrics.VerticalListPadding / 2, 12) : new Thickness(11, 8, 11, 14);
+        ScrollViewer.SetHorizontalScrollMode(CardList, vertical ? ScrollMode.Disabled : ScrollMode.Enabled);
+        ScrollViewer.SetHorizontalScrollBarVisibility(CardList, vertical ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden);
+        ScrollViewer.SetVerticalScrollMode(CardList, vertical ? ScrollMode.Enabled : ScrollMode.Disabled);
+        ScrollViewer.SetVerticalScrollBarVisibility(CardList, vertical ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Disabled);
+        ScrollViewer.SetIsHorizontalRailEnabled(CardList, !vertical);
+        ScrollViewer.SetIsVerticalRailEnabled(CardList, vertical);
+
+        // Resize grip on the edge facing the screen center.
+        ResizeGrip.SetDirection(horizontal: vertical);
+        Grid.SetRow(ResizeGrip, _edge == PanelEdge.Top ? 1 : 0);
+        Grid.SetRowSpan(ResizeGrip, vertical ? 2 : 1);
+        ResizeGrip.Width = vertical ? 8 : double.NaN;
+        ResizeGrip.Height = vertical ? double.NaN : 8;
+        ResizeGrip.HorizontalAlignment = _edge switch
+        {
+            PanelEdge.Left => HorizontalAlignment.Right,
+            PanelEdge.Right => HorizontalAlignment.Left,
+            _ => HorizontalAlignment.Stretch,
+        };
+        ResizeGrip.VerticalAlignment = _edge switch
+        {
+            PanelEdge.Top => VerticalAlignment.Bottom,
+            PanelEdge.Bottom => VerticalAlignment.Top,
+            _ => VerticalAlignment.Stretch,
+        };
+        GripBar.Width = vertical ? 4 : 36;
+        GripBar.Height = vertical ? 36 : 4;
+        GripBar.HorizontalAlignment = _edge switch
+        {
+            PanelEdge.Left => HorizontalAlignment.Right,
+            PanelEdge.Right => HorizontalAlignment.Left,
+            _ => HorizontalAlignment.Center,
+        };
+        GripBar.VerticalAlignment = _edge switch
+        {
+            PanelEdge.Top => VerticalAlignment.Bottom,
+            PanelEdge.Bottom => VerticalAlignment.Top,
+            _ => VerticalAlignment.Center,
+        };
+        GripBar.Margin = _edge switch
+        {
+            PanelEdge.Top => new Thickness(0, 0, 0, 3),
+            PanelEdge.Left => new Thickness(0, 0, 3, 0),
+            PanelEdge.Right => new Thickness(3, 0, 0, 0),
+            _ => new Thickness(0, 3, 0, 0),
+        };
     }
 
     // ---------- list helpers ----------
@@ -287,12 +442,51 @@ public sealed partial class PanelWindow : Window
         else CardList.Focus(FocusState.Programmatic);
     }
 
-    private void Select(int index)
+    private void Select(int index, bool animate = false)
     {
         if (ViewModel.Items.Count == 0) return;
         index = Math.Clamp(index, 0, ViewModel.Items.Count - 1);
         CardList.SelectedIndex = index;
-        CardList.ScrollIntoView(ViewModel.Items[index]);
+        if (!ScrollToCard(index, animate)) CardList.ScrollIntoView(ViewModel.Items[index]);
+    }
+
+    /// <summary>Arrow keys between cards: select the neighbor and glide it into view.</summary>
+    private void MoveSelection(int delta)
+    {
+        if (ViewModel.Items.Count == 0) return;
+        var index = Math.Clamp(Math.Max(0, CardList.SelectedIndex) + delta, 0, ViewModel.Items.Count - 1);
+        CardList.SelectedIndex = index;
+        // Keyboard focus follows once the scroll settled; focusing an off-screen card would jump there.
+        if (ScrollToCard(index, animate: true)) _focusAfterScroll = true;
+        else FocusSelectedCard();
+    }
+
+    /// <summary>
+    /// Scrolls so card <paramref name="index"/> is fully visible. Cards all have the same size, so its place
+    /// is computed rather than read from a (possibly not yet realized) container. False: nothing to do.
+    /// </summary>
+    private bool ScrollToCard(int index, bool animate)
+    {
+        if (_scroller is null) return false;
+        var vertical = IsVertical;
+        var stride = vertical ? ViewModel.Metrics.Height + CardMetrics.VerticalStride : ViewModel.Metrics.Width + CardMetrics.HorizontalStride;
+        var lead = vertical ? CardList.Padding.Top : CardList.Padding.Left;
+        var offset = vertical ? _scroller.VerticalOffset : _scroller.HorizontalOffset;
+        var viewport = vertical ? _scroller.ViewportHeight : _scroller.ViewportWidth;
+        var max = vertical ? _scroller.ScrollableHeight : _scroller.ScrollableWidth;
+
+        var start = lead + index * stride;
+        var end = start + stride;
+        double target;
+        if (start < offset + lead) target = start - lead;
+        else if (end > offset + viewport - lead) target = end - viewport + lead;
+        else return false;
+        target = Math.Clamp(target, 0, Math.Max(0, max));
+        if (Math.Abs(target - offset) < 1) return false;
+
+        if (vertical) _scroller.ChangeView(null, target, null, !animate);
+        else _scroller.ChangeView(target, null, null, !animate);
+        return true;
     }
 
     /// <summary>Selected cards in on-screen order; falls back to the first card.</summary>
@@ -309,10 +503,18 @@ public sealed partial class PanelWindow : Window
     {
         _scroller ??= FindChild<ScrollViewer>(CardList);
         if (_scroller is null) return;
-        _scroller.ViewChanged += (_, _) =>
+        _scroller.ViewChanged += (_, e) =>
         {
-            if (_scroller.HorizontalOffset > _scroller.ScrollableWidth - ViewModel.Metrics.Width * 3)
-                _ = ViewModel.LoadMoreAsync();
+            var vertical = IsVertical;
+            var offset = vertical ? _scroller.VerticalOffset : _scroller.HorizontalOffset;
+            var scrollable = vertical ? _scroller.ScrollableHeight : _scroller.ScrollableWidth;
+            var card = vertical ? ViewModel.Metrics.Height : ViewModel.Metrics.Width;
+            if (offset > scrollable - card * 3) _ = ViewModel.LoadMoreAsync();
+            if (!e.IsIntermediate && _focusAfterScroll)
+            {
+                _focusAfterScroll = false;
+                if (!SearchFocused) FocusSelectedCard();
+            }
         };
     }
 
@@ -499,7 +701,19 @@ public sealed partial class PanelWindow : Window
 
             case VirtualKey.Left or VirtualKey.Right when inSearch && SearchBox.Text.Length == 0:
             case VirtualKey.Left or VirtualKey.Right when inSearch && !shift && ViewModel.Items.Count > 0 && CaretAtEdge(e.Key):
-                Select(CardList.SelectedIndex + (e.Key == VirtualKey.Left ? -1 : 1));
+                Select(CardList.SelectedIndex + (e.Key == VirtualKey.Left ? -1 : 1), animate: true);
+                e.Handled = true;
+                return;
+
+            // Between cards along the list's direction (Shift keeps the list's own range selection).
+            case VirtualKey.Left or VirtualKey.Right when !inSearch && !shift && !IsVertical:
+                MoveSelection(e.Key == VirtualKey.Left ? -1 : 1);
+                e.Handled = true;
+                return;
+
+            case VirtualKey.Down when !inSearch && !shift && IsVertical:
+            case VirtualKey.Up when !inSearch && !shift && IsVertical && CardList.SelectedIndex > 0:
+                MoveSelection(e.Key == VirtualKey.Up ? -1 : 1);
                 e.Handled = true;
                 return;
 
@@ -792,6 +1006,9 @@ public sealed partial class PanelWindow : Window
         edit.Click += (_, _) => ShowPinboardEditor(element, tab.Pinboard, null);
         var delete = new MenuFlyoutItem { Text = Loc.Get("Pinboard_Delete"), Icon = new FontIcon { Glyph = "\uE74D" } };
         delete.Click += (_, _) => ConfirmDeletePinboard(element, tab.Pinboard!);
+        var newText = new MenuFlyoutItem { Text = Loc.Get("Panel_NewText"), Icon = new FontIcon { Glyph = "\uE70F" } };
+        newText.Click += (_, _) => EditWindow.Create(_host, tab.PinboardId, this);
+        menu.Items.Add(newText);
         menu.Items.Add(edit);
         menu.Items.Add(delete);
         menu.ShowAt(element);
@@ -987,19 +1204,37 @@ public sealed partial class PanelWindow : Window
     private void ResizeGrip_PointerPressed(object sender, PointerRoutedEventArgs e)
     {
         _resizing = ((UIElement)sender).CapturePointer(e.Pointer);
-        _resizeStartY = DisplayHelper.CursorPosition().Y;
-        _resizeStartHeight = _host.Settings.PanelHeight;
+        var cursor = DisplayHelper.CursorPosition();
+        _resizeStart = new PointInt32(cursor.X, cursor.Y);
+        _resizeStartSize = IsVertical ? _host.Settings.PanelWidth : _host.Settings.PanelHeight;
         e.Handled = true;
     }
 
     private void ResizeGrip_PointerMoved(object sender, PointerRoutedEventArgs e)
     {
         if (!_resizing) return;
-        var dy = (DisplayHelper.CursorPosition().Y - _resizeStartY) / _scale;
-        var height = Math.Clamp(Math.Round(_resizeStartHeight - dy), MinPanelHeight, MaxPanelHeight);
-        if (Math.Abs(height - _host.Settings.PanelHeight) < 1) return;
-        _host.Settings.PanelHeight = height;
-        ApplyHeight(height);
+        var cursor = DisplayHelper.CursorPosition();
+        // Growing means moving the grip toward the screen center.
+        var delta = _edge switch
+        {
+            PanelEdge.Top => cursor.Y - _resizeStart.Y,
+            PanelEdge.Left => cursor.X - _resizeStart.X,
+            PanelEdge.Right => _resizeStart.X - cursor.X,
+            _ => _resizeStart.Y - cursor.Y,
+        } / _scale;
+        if (IsVertical)
+        {
+            var width = Math.Clamp(Math.Round(_resizeStartSize + delta), MinPanelWidth, MaxPanelWidth);
+            if (Math.Abs(width - _host.Settings.PanelWidth) < 1) return;
+            _host.Settings.PanelWidth = width;
+        }
+        else
+        {
+            var height = Math.Clamp(Math.Round(_resizeStartSize + delta), MinPanelHeight, MaxPanelHeight);
+            if (Math.Abs(height - _host.Settings.PanelHeight) < 1) return;
+            _host.Settings.PanelHeight = height;
+        }
+        ApplySize();
     }
 
     private void ResizeGrip_PointerReleased(object sender, PointerRoutedEventArgs e)
@@ -1099,6 +1334,9 @@ public sealed partial class PanelWindow : Window
     // ---------- top bar ----------
 
     private void Settings_Click(object sender, RoutedEventArgs e) => _host.OpenSettings();
+
+    /// <summary>Write a snippet into the pinboard shown (from history: into the "Snippets" pinboard).</summary>
+    private void NewText_Click(object sender, RoutedEventArgs e) => EditWindow.Create(_host, ViewModel.SelectedTab.PinboardId, this);
 
     private void PausedPill_Click(object sender, RoutedEventArgs e) => _host.Resume();
 

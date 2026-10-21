@@ -7,3 +7,8 @@ artifacts/
 publish/
 TestResults/
 *.binlog
+
+# Installer build outputs
+dist/
+installer/ChineseSimplified.isl
+tools/icon-preview.png

@@ -1,0 +1,45 @@
+<!--
+  WiX v5 source for the ClipNest .msi (per-user, no admin rights).
+  Built by CI:  wix build installer/ClipNest.wxs -arch x64 -d Version=1.0.0 -d SourceDir=<abs publish dir> -d IconPath=<abs .ico> -o dist/ClipNest-win-x64.msi
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package Name="ClipNest"
+           Manufacturer="ClipNest contributors"
+           Version="$(Version)"
+           UpgradeCode="8CDEDBB9-6642-49C5-B482-3C37B1DE0E51"
+           Scope="perUser"
+           Compressed="yes">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of ClipNest is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="ClipNestIcon" SourceFile="$(IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="ClipNestIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/tsix2019/ClipNest" />
+    <Property Id="ARPNOMODIFY" Value="1" />
+
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="ProgramsFolder" Name="Programs">
+        <Directory Id="INSTALLFOLDER" Name="ClipNest" />
+      </Directory>
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(SourceDir)\**">
+        <Exclude Files="$(SourceDir)\**\*.pdb" />
+      </Files>
+    </ComponentGroup>
+
+    <Component Id="Shortcuts" Directory="ProgramMenuFolder" Guid="0711E608-42EB-4A51-A689-CFCF5C2AD9C3">
+      <Shortcut Id="StartMenuShortcut" Name="ClipNest" Target="[INSTALLFOLDER]ClipNest.exe" WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveInstallFolder" Directory="INSTALLFOLDER" On="uninstall" />
+      <RegistryValue Root="HKCU" Key="Software\ClipNest" Name="Installed" Type="integer" Value="1" KeyPath="yes" />
+    </Component>
+
+    <Feature Id="Main">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="Shortcuts" />
+    </Feature>
+  </Package>
+</Wix>

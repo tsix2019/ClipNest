@@ -3,120 +3,221 @@
 <h1 align="center">ClipNest</h1>
 
 <p align="center">
-  Windows 原生剪贴板管理器，交互与视觉参考 macOS 上的 <a href="https://pasteapp.io">Paste</a>。<br/>
-  A native Windows clipboard manager inspired by <a href="https://pasteapp.io">Paste</a> for Mac.
+  <b>把你复制过的一切，都收进一个漂亮的抽屉里。</b><br/>
+  Windows 原生剪贴板管理器，交互与视觉参考 macOS 上的 <a href="https://pasteapp.io">Paste</a>。
+</p>
+
+<p align="center">
+  <a href="../../releases/latest"><img src="https://img.shields.io/github/v/release/tsix2019/ClipNest?include_prereleases&label=%E4%B8%8B%E8%BD%BD&color=8B5CF6" alt="Download" /></a>
+  <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows" alt="Windows 10 | 11" />
+  <img src="https://img.shields.io/badge/.NET-10%20Native%20AOT-512BD4?logo=dotnet" alt=".NET 10 Native AOT" />
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-10B981" alt="MIT" /></a>
 </p>
 
 <p align="center"><a href="#中文">中文</a> · <a href="#english">English</a></p>
 
-<p align="center"><img src="docs/images/panel-light.png" alt="ClipNest panel (light)" /></p>
-<p align="center"><img src="docs/images/panel-dark.png" alt="ClipNest panel (dark)" /></p>
-<p align="center"><img src="docs/images/settings-light.png" width="560" alt="Settings" /></p>
+<p align="center"><img src="docs/images/hero-light.webp" alt="ClipNest 面板" /></p>
 
 ---
 
 ## 中文
 
-### 功能
+按下 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>，半透明的卡片面板从屏幕底部滑出。最近复制的文字、图片、文件、链接、颜色一字排开，用方向键选中，按 <kbd>Enter</kbd> 就粘贴回你刚才所在的应用。
 
-- **完整剪贴板历史**：自动记录文本、富文本、图片、文件、链接和颜色。重复复制的内容不会生成新条目，而是移到最前。
-- **底部卡片面板**：按 `Ctrl+Shift+V` 在当前屏幕底部滑出半透明面板。卡片头部的颜色取自来源应用的图标，并显示时间和应用图标。
-- **即时搜索**：面板打开后直接输入即可搜索，中英文都支持子串匹配。还可以用筛选条件：`type:图片`、`app:chrome`、`date:7d`、`pin:工作`。
-- **一键粘贴回原应用**：
-  - `Enter` 或双击粘贴到原应用，`Shift+Enter` 以纯文本粘贴。
-  - `Ctrl+1…9` 直接粘贴前 9 项。
-  - 多选后可以一次粘贴多项。
-- **Pinboards**：自建彩色收藏夹，固定进去的内容永不过期。`Ctrl+←/→` 切换。
-- **Paste Stack**：按 `Ctrl+Shift+C` 打开，先连续复制多项，再连续按 `Ctrl+V` 按顺序逐条粘贴。
-- **预览与编辑**：`空格` 快速预览，`Ctrl+E` 编辑文本，`Ctrl+R` 重命名，也可以把卡片拖到其他应用。
-- **粘贴为…**：右键卡片可以选择变换后再粘贴：
-  - 文本：大小写、驼峰/下划线/短横线命名、去空白、合并为一行、排序或去重行、JSON 格式化/压缩、URL/Base64 编解码。
-  - 颜色：HEX / RGB / HSL。
-  - 图片：识别出的文字。
-  - 文件：路径或文件名。
-- **片段模板**：Pinboard 里的文本支持 `{date}` `{time}` `{datetime}` `{date:yyyyMMdd}` `{clipboard}`，粘贴时自动展开。
-- **拖动固定**：把卡片拖到顶部的 Pinboard 标签上即可固定到该 Pinboard。
-- **图片文字识别**：在本机用 Windows OCR 识别图片中的文字，识别结果可以被搜索。
-- **隐私**：
-  - 忽略密码管理器等标记为敏感的内容。
-  - 可以排除指定应用、暂停记录。
-  - 截图、录屏、屏幕共享时会隐藏 ClipNest 的窗口。
-  - 按内容识别私钥、API 令牌、JWT，不记录。
-  - 可选不记录图片；托盘可“忽略下一次复制”。
-  - 所有数据只保存在本机。
-- **备份**：一键导出为 .zip，也能从备份恢复。
-- **轻量**：
-  - 使用 Windows 自带的 SQLite（winsqlite3），没有原生依赖。
-  - 面板隐藏一段时间后会自动释放内存。
-  - 采用事件驱动，空闲时 CPU 占用为 0。
+不用安装运行时，解压即用。安装包约 28 MB，后台常驻只占约 20 MB 内存，空闲时 CPU 占用为 0。
+
+### 一眼认出每一条
+
+<p align="center"><img src="docs/images/preview.webp" alt="卡片与预览" /></p>
+
+每种内容都有专门的卡片：
+
+- **文字**：代码自动换成等宽字体。
+- **颜色**：直接显示色块，并给出 RGB 值。
+- **图片和图片文件**：显示缩略图。
+- **其他文件**：显示真实的文件图标。
+- **链接**：显示网页标题。
+
+卡片顶部的颜色取自来源应用的图标，一眼就知道是从哪里复制的。按 <kbd>Space</kbd> 打开大图预览，不会打断你的操作。
+
+### 粘贴为…
+
+<table>
+<tr>
+<td width="52%"><img src="docs/images/paste-as.webp" alt="粘贴为" /></td>
+<td>
+
+右键卡片，选择转换后的版本再粘贴。每一项都会**先预览结果**，不适用的选项自动置灰。
+
+- **文本**：全部大写 / 小写、首字母大写、camelCase、snake_case、kebab-case
+- **整理**：去多余空白、合并为一行、排序、去重
+- **开发**：格式化或压缩 JSON、URL 和 Base64 的编码与解码
+- **颜色**：HEX、RGB、HSL 互转
+- **图片**：粘贴识别出的文字（本机 OCR）
+- **文件**：粘贴文件路径
+
+</td>
+</tr>
+</table>
+
+### Pinboards：常用内容永久保存
+
+<p align="center"><img src="docs/images/pinboard.webp" alt="Pinboards" /></p>
+
+自建彩色收藏夹，把卡片拖到标签上即可收藏，收藏的内容永不过期，<kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>→</kbd> 切换。里面的文本还可以当作**片段模板**：粘贴时会自动展开 `{date}`、`{time}`、`{clipboard}` 等占位符。
+
+### 搜得到，筛得准
+
+<p align="center"><img src="docs/images/filter.webp" width="720" alt="筛选" /></p>
+
+面板打开后直接打字就开始搜索，中文、英文都支持子串匹配，图片里的文字也能搜到。还可以按类型、来源应用、日期、Pinboard 筛选，或者直接在搜索框里输入 `type:图片`、`app:chrome`、`date:7d`。
+
+### Paste Stack：连续复制，按顺序粘贴
+
+<table>
+<tr>
+<td>
+
+填表、搬运资料时最好用：按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> 打开 Paste Stack，先依次复制好几项，再到目标位置连按 <kbd>Ctrl</kbd>+<kbd>V</kbd>，每按一次就粘出下一项。
+
+顺序可以切换，单项可以移除，全部粘完后自动清空。
+
+</td>
+<td width="42%"><img src="docs/images/paste-stack.webp" alt="Paste Stack" /></td>
+</tr>
+</table>
+
+### 键盘党友好，深色模式
+
+<p align="center"><img src="docs/images/hero-dark.webp" alt="深色模式与快速粘贴" /></p>
+
+按住 <kbd>Ctrl</kbd> 会显示数字角标，<kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> 直接粘贴对应的那一项。外观可以选浅色、深色或跟随系统，切换时立即生效。
+
+### 隐私优先
+
+- 所有数据**只保存在本机**，没有账号，也不上传任何内容。
+- 自动跳过密码管理器标记为敏感的内容；私钥、API 令牌、JWT 等疑似密钥按内容识别，不会被记录。
+- 可以排除指定应用、暂停记录、“忽略下一次复制”，也可以设置不记录图片。
+- 截图、录屏、屏幕共享时自动隐藏 ClipNest 的窗口。
+
+### 设置
+
+<table>
+<tr>
+<td><img src="docs/images/settings-light.webp" alt="设置（浅色）" /></td>
+<td><img src="docs/images/settings-dark.webp" alt="设置（深色）" /></td>
+</tr>
+</table>
+
+中英双语界面，可设置快捷键、保留时长、开机启动，还能一键导出备份为 .zip 并从备份恢复。
 
 ### 快捷键
 
 | 操作 | 按键 |
 |---|---|
-| 打开 / 关闭面板 | `Ctrl+Shift+V`（可在设置中修改） |
-| Paste Stack | `Ctrl+Shift+C` |
-| 粘贴 / 纯文本粘贴 | `Enter` / `Shift+Enter` |
-| 快速粘贴第 N 项 | `Ctrl+1…9`（加 `Shift` 为纯文本） |
-| 切换条目 / Pinboard | `←` `→` / `Ctrl+←` `Ctrl+→` |
-| 预览 / 编辑 / 重命名 / 固定 | `空格` / `Ctrl+E` / `Ctrl+R` / `Ctrl+P` |
-| 仅复制 / 删除 / 撤销删除 | `Ctrl+C` / `Delete` / `Ctrl+Z` |
-| 关闭 | `Esc` |
+| 打开 / 关闭面板 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>（可在设置中修改） |
+| Paste Stack | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> |
+| 粘贴 / 以纯文本粘贴 | <kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd> |
+| 快速粘贴第 N 项 | <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd>（加 <kbd>Shift</kbd> 为纯文本） |
+| 切换条目 / Pinboard | <kbd>←</kbd> <kbd>→</kbd> / <kbd>Ctrl</kbd>+<kbd>←</kbd> <kbd>→</kbd> |
+| 预览 / 编辑 / 重命名 / 固定 | <kbd>Space</kbd> / <kbd>Ctrl</kbd>+<kbd>E</kbd> / <kbd>Ctrl</kbd>+<kbd>R</kbd> / <kbd>Ctrl</kbd>+<kbd>P</kbd> |
+| 仅复制 / 删除 / 撤销删除 | <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Delete</kbd> / <kbd>Ctrl</kbd>+<kbd>Z</kbd> |
+| 关闭 | <kbd>Esc</kbd> |
 
-### 构建
+### 下载安装
 
-需要 Windows 10 1809+，以及 [.NET 10 SDK](https://dotnet.microsoft.com/download)。
+到 [Releases](../../releases/latest) 下载，三种格式任选（Intel / AMD 电脑选 `x64`，骁龙等 ARM 电脑选 `arm64`）：
 
-本地调试使用框架依赖模式，需要先安装 [Windows App Runtime 2.3](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads)：
+| 文件 | 说明 |
+|---|---|
+| `ClipNest-Setup-win-x64.exe` | **推荐**。安装程序，无需管理员权限，自动创建开始菜单快捷方式，可在“设置 → 应用”中卸载 |
+| `ClipNest-win-x64.msi` | MSI 安装包，适合批量部署 |
+| `ClipNest-win-x64.zip` | 便携版，解压到任意文件夹后运行 `ClipNest.exe` |
+
+安装后按 <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> 开始使用。需要 Windows 10 1809 或更高版本。发布包是自包含的 Native AOT 构建，不需要安装 .NET 或 Windows App Runtime。
+
+> 遇到问题或有建议，欢迎在 [Issues](../../issues) 反馈。
+
+### 从源码构建
+
+需要 [.NET 10 SDK](https://dotnet.microsoft.com/download)。本地调试使用框架依赖模式，还需要安装 [Windows App Runtime 2.3](https://learn.microsoft.com/windows/apps/windows-app-sdk/downloads)。
 
 ```powershell
 dotnet run --project tests/ClipNest.Core.Tests
 dotnet run --project tests/ClipNest.Data.Tests
-dotnet build src/ClipNest.App -c Debug -p:Platform=x64
+dotnet run --project tests/ClipNest.Platform.Tests
+dotnet build src/ClipNest.App -c Release -p:Platform=x64
 ```
 
-发布版是自包含 + Native AOT，由 CI 构建，见 `.github/workflows/ci.yml`：
+发布版（自包含 + Native AOT）由 CI 构建，见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)。
 
-```powershell
-dotnet publish src/ClipNest.App -c Release -r win-x64 -p:Platform=x64 -p:WindowsAppSDKSelfContained=true -p:SelfContained=true -p:PublishAot=true
-```
+<details>
+<summary>技术栈与开发调试</summary>
 
-数据保存在 `%LocalAppData%\ClipNest\`，包括数据库、图片和日志。
+- **界面**：WinUI 3（Windows App SDK 2.3）、`x:Bind`、Native AOT。
+- **存储**：Windows 自带的 SQLite（winsqlite3）+ FTS5 trigram 全文索引，没有任何原生依赖。
+- **系统集成**：剪贴板监听、`SendInput` 粘贴、全局热键、托盘图标，全部直接调用 Win32 API。
+- **图像与文字识别**：WIC 和 Windows.Media.Ocr，都在本机完成。
 
-开发调试：
+数据保存在 `%LocalAppData%\ClipNest\`。开发时可用的环境变量和参数：
+
 - `CLIPNEST_DATA=<目录>`：使用其他数据目录。
-- `CLIPNEST_SNAPSHOT=<目录>`：写入示例数据，把面板和设置窗口渲染成 PNG 后退出。
-- `ClipNest.exe --toggle`：切换面板显示（程序已在运行时）。
+- `CLIPNEST_SNAPSHOT=<目录>`：写入示例数据，把面板和设置窗口渲染成 PNG 后退出（CI 冒烟测试用）。
+- `CLIPNEST_DEMO=1`：写入演示数据并铺上生成的壁纸，不记录真实剪贴板（README 截图用）。
+- `ClipNest.exe --toggle`：切换面板显示，可以绑定到其他快捷工具。
 
-开发进度和待实测项见 [docs/STATUS.md](docs/STATUS.md)。
+</details>
+
+### 致谢
+
+交互和视觉设计参考了 [Paste](https://pasteapp.io)；功能设计参考了 [Ditto](https://github.com/sabrogden/Ditto)、[CopyQ](https://github.com/hluk/CopyQ)、[Maccy](https://github.com/p0deje/Maccy)、[EcoPaste](https://github.com/EcoPasteHub/EcoPaste)、[PasteBar](https://github.com/PasteBar/PasteBarApp) 和 [PowerToys](https://github.com/microsoft/PowerToys) 等优秀的开源项目。
+
+### 许可证
+
+[MIT](LICENSE)
 
 ---
 
 ## English
 
-### Features
+**Everything you copy, kept in one beautiful drawer.** ClipNest is a native Windows clipboard manager inspired by [Paste](https://pasteapp.io) for Mac.
 
-- **Full clipboard history** — text, rich text, images, files, links and colors. Copying the same thing again moves it to the front instead of duplicating it.
-- **Bottom card panel** — `Ctrl+Shift+V` slides a translucent panel up from the bottom of the current screen. Each card's header is tinted with its source app's color.
-- **Instant search** — just start typing. Substring matching works for CJK text too. Filters: `type:image`, `app:chrome`, `date:7d`, `pin:work`.
-- **Paste straight back**:
-  - `Enter` or double-click pastes into the app you were using; `Shift+Enter` pastes plain text.
-  - `Ctrl+1…9` pastes one of the first nine items.
-  - Select several items to paste them all at once.
-- **Pinboards** — colored collections that never expire. Switch with `Ctrl+←/→`.
-- **Paste Stack** — `Ctrl+Shift+C`. Copy several things, then press `Ctrl+V` repeatedly to paste them in order.
-- **Preview & edit** — `Space` previews, `Ctrl+E` edits, `Ctrl+R` renames. You can also drag cards into other apps.
-- **Text in images** — on-device Windows OCR makes screenshots searchable.
-- **Privacy**:
-  - Skips content that apps (such as password managers) mark as sensitive.
-  - Per-app exclusions and a pause switch.
-  - ClipNest windows are hidden from screenshots, recordings and screen sharing.
-  - Data never leaves your PC.
-- **Lightweight**:
-  - Uses the SQLite that ships with Windows (no native dependencies).
-  - Frees memory when the panel has been hidden for a while.
-  - Fully event-driven, with zero idle CPU.
+Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> and a translucent card panel slides up from the bottom of the screen. Pick an item with the arrow keys and press <kbd>Enter</kbd> to paste it straight back into the app you were using.
+
+No runtime to install, just unzip and run. The download is about 28 MB, it idles at around 20 MB of memory, and it uses zero CPU while idle.
+
+### Highlights
+
+- **A card for every kind of content** — text (code in a monospace font), rich text, images, files (with real previews and icons), links (with page titles) and colors (with swatches). Headers take the color of the source app. <kbd>Space</kbd> opens a large preview.
+- **Paste as…** — right-click to paste a transformed version, with a live preview of each option: case changes, camelCase / snake_case / kebab-case, whitespace cleanup, sorting and de-duplicating lines, JSON pretty / minify, URL and Base64 encode / decode, HEX / RGB / HSL colors, OCR text from images, and file paths.
+- **Pinboards** — colored collections that never expire. Drag a card onto a tab to pin it. Pinned text works as a snippet template: `{date}`, `{time}` and `{clipboard}` expand when pasted.
+- **Search and filters** — just start typing. Substring matching works for CJK too, and text inside images is searchable. Filter by type, source app, date or Pinboard, or type `type:image`, `app:chrome`, `date:7d`.
+- **Paste Stack** — <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd>. Copy several things, then press <kbd>Ctrl</kbd>+<kbd>V</kbd> repeatedly to paste them in order.
+- **Keyboard first** — hold <kbd>Ctrl</kbd> to see number badges, then <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> pastes one directly. Light, dark or system theme.
+- **Private by design**:
+  - Data never leaves your PC, and there is no account.
+  - Content marked sensitive (password managers) and anything that looks like a key or token is skipped.
+  - You can exclude apps, pause recording, or ignore the next copy.
+  - ClipNest's windows are hidden from screenshots and screen sharing.
+- **Backup** — export everything to a .zip and restore from it.
+- **Bilingual UI** — English and Simplified Chinese.
+
+See the screenshots above. The shortcut table in the Chinese section applies as-is.
+
+### Install
+
+Download from [Releases](../../releases/latest). Pick `x64` for Intel / AMD PCs or `arm64` for ARM PCs:
+
+- `ClipNest-Setup-win-<arch>.exe` (recommended): a per-user installer that needs no admin rights and adds a Start menu shortcut.
+- `ClipNest-win-<arch>.msi`: an MSI package for managed deployment.
+- `ClipNest-win-<arch>.zip`: a portable build. Unzip it and run `ClipNest.exe`.
+
+Requires Windows 10 1809 or later. Release builds are self-contained Native AOT, so no .NET or Windows App Runtime install is needed.
 
 ### Build
 
-Requires Windows 10 1809+ and the .NET 10 SDK. Local debug builds are framework-dependent and need Windows App Runtime 2.3 installed. See the commands above. Release builds (self-contained, Native AOT) are produced by CI.
+Requires the .NET 10 SDK. Local debug builds are framework-dependent and also need Windows App Runtime 2.3. See the commands in the Chinese section. Release builds are produced by CI.
+
+### License
+
+[MIT](LICENSE)

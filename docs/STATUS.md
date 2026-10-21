@@ -1,6 +1,6 @@
 # ClipNest 开发状态
 
-> 更新：2026-10-21 · 版本 0.0.1 Beta· 仓库：https://github.com/tsix2019/ClipNest（私有）
+> 更新：2026-10-21 · 版本 1.0.0 · 仓库：https://github.com/tsix2019/ClipNest（公开，MIT 许可证）
 
 ## 一、完成情况
 
@@ -109,7 +109,7 @@ DOTNET_ROOT='Y:\devtools\dotnet' src/ClipNest.App/bin/x64/Release/net10.0-window
 | 录屏时隐藏、忽略敏感内容默认开启；开机启动默认开启（引导页里可以关） | 隐私优先 |
 | 粘贴后被粘贴的条目移到最前 | 与 Paste 的行为一致 |
 | 卡片头部颜色取来源 App 图标的主色，并自动调到满足 4.5:1 的文字对比度 | 调研结论倾向于 Paste 就是按来源 App 着色 |
-| 暂不添加 LICENSE 文件 | 你还没决定开源协议 |
+| 采用 MIT 许可证，仓库公开 | 2026-10-21 按你的要求开源 |
 | 加了调试用环境变量：`CLIPNEST_DATA`（换数据目录）、`CLIPNEST_SNAPSHOT`（渲染截图后退出）；加了启动参数 `--toggle` | 用于测试和 CI；`--toggle` 也可以绑定到其他快捷工具 |
 
 ## 五、已知不足 / 后续可做

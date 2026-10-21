@@ -3,7 +3,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <InformationalVersion>1.0.0</InformationalVersion>
     <Authors>ClipNest contributors</Authors>
     <Product>ClipNest</Product>

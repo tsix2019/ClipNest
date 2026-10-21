@@ -93,11 +93,6 @@
         <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
     </Style>
 
-    <!-- Cards stacked vertically (panel on the left/right edge). -->
-    <Style x:Key="VerticalCardContainerStyle" TargetType="ListViewItem" BasedOn="{StaticResource CardContainerStyle}">
-        <Setter Property="Margin" Value="0,5" />
-    </Style>
-
     <Style x:Key="CardTitleStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{ThemeResource ContentControlThemeFontFamily}" />
         <Setter Property="FontSize" Value="13" />

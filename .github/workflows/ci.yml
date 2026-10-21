@@ -82,6 +82,8 @@ jobs:
           if (Test-Path $done) { Get-Content $done | Tee-Object -FilePath $env:GITHUB_STEP_SUMMARY -Append }
           Get-Content (Join-Path $env:CLIPNEST_DATA 'logs/clipnest.log') -ErrorAction SilentlyContinue
           if (-not (Test-Path $done) -or -not (Select-String -Path $done -Pattern '^ok' -Quiet)) { Stop-Process -Id $p.Id -ErrorAction SilentlyContinue; exit 1 }
+          # Errors caught at runtime (e.g. an AOT-only cast failure) still fail the build.
+          if (Select-String -Path (Join-Path $env:CLIPNEST_DATA 'logs/clipnest.log') -Pattern '\[ERROR\]' -Quiet) { Write-Error 'ClipNest logged errors during the smoke test'; exit 1 }
           Copy-Item -Recurse $env:CLIPNEST_SNAPSHOT smoke-snapshots
 
       - uses: actions/upload-artifact@v7

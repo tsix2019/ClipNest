@@ -39,6 +39,16 @@ internal static class DevTools
                 host.Panel.HideNow();
             }
 
+            // Switching edges on a panel that has already been shown (the list keeps its first layout otherwise).
+            foreach (var edge in new[] { Core.Settings.PanelEdge.Left, Core.Settings.PanelEdge.Top, Core.Settings.PanelEdge.Right, Core.Settings.PanelEdge.Bottom })
+            {
+                host.Settings.PanelEdge = edge;
+                host.Panel.ShowPanel();
+                await Task.Delay(1500);
+                await SaveAsync((UIElement)host.Panel.Content, Path.Combine(outDir, $"panel-edge-{edge.ToString().ToLowerInvariant()}.png"));
+                host.Panel.HideNow();
+            }
+
             host.Panel.SuppressAutoHide = false;
             host.OpenSettings();
             await Task.Delay(2500);

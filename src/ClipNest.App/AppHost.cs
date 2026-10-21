@@ -133,6 +133,7 @@ public sealed class AppHost : IDisposable
         Tray.Clicked += TogglePanel;
 
         Panel = new PanelWindow(this);
+        Injector.ForegroundChanged += Panel.OnForegroundChanged;
         Enricher = new Enricher(this);
         Stack = new PasteStack(this);
 

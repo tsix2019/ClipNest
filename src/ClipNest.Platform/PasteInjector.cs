@@ -45,6 +45,9 @@ public sealed class PasteInjector : IDisposable
 
     public nint Target { get; private set; }
 
+    /// <summary>Another window became the foreground window (raised on the thread that created the injector).</summary>
+    public event Action<nint>? ForegroundChanged;
+
     /// <summary>Call right before showing the panel.</summary>
     public void CaptureTarget()
     {
@@ -53,8 +56,20 @@ public sealed class PasteInjector : IDisposable
     }
 
     [UnmanagedCallersOnly]
-    private static void OnForeground(nint hook, uint evt, nint hwnd, int idObject, int idChild, uint thread, uint time) =>
-        _instance?.Remember(hwnd);
+    private static void OnForeground(nint hook, uint evt, nint hwnd, int idObject, int idChild, uint thread, uint time)
+    {
+        var self = _instance;
+        if (self is null) return;
+        self.Remember(hwnd);
+        try
+        {
+            self.ForegroundChanged?.Invoke(hwnd);
+        }
+        catch (Exception e)
+        {
+            Log.Error("ForegroundChanged", e);
+        }
+    }
 
     private void Remember(nint hwnd)
     {

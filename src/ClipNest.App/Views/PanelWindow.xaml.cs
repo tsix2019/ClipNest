@@ -48,6 +48,7 @@ public sealed partial class PanelWindow : Window
     private PanelEdge _edge = PanelEdge.Bottom;
     private bool _edgeApplied;
     private bool _focusAfterScroll;
+    private readonly System.Diagnostics.Stopwatch _sinceShow = new();
     private bool _shown;
     private bool _hiding;
     private bool _showing;
@@ -108,7 +109,16 @@ public sealed partial class PanelWindow : Window
         host.ItemChanged += ViewModel.OnItemChanged;
         host.PauseChanged += UpdatePausedPill;
         ViewModel.ItemsReset += OnItemsReset;
-        CardList.Loaded += (_, _) => HookScroller();
+        CardList.Loaded += (_, _) =>
+        {
+            HookScroller();
+            ApplyListOrientation();
+        };
+        // Cards are spaced along the scrolling direction; containers get recycled, so set it on each use.
+        CardList.ContainerContentChanging += (_, e) =>
+        {
+            if (e.ItemContainer is { } container) container.Margin = CardMargin;
+        };
         CardList.SelectionChanged += (_, e) =>
         {
             foreach (var added in e.AddedItems.OfType<ClipCardViewModel>()) added.IsSelected = true;
@@ -192,6 +202,7 @@ public sealed partial class PanelWindow : Window
         SystemBackdrop ??= new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
         Root.Opacity = 0;
         _shown = true;
+        _sinceShow.Restart();
         WindowStyler.RemoveFrame(_hwnd); // the presenter may restore its frame styles
         var target = PanelRect();
         AppWindow.Move(Offscreen(target));
@@ -204,6 +215,7 @@ public sealed partial class PanelWindow : Window
         // The list may realize its containers only now (first show): select + focus once layout ran.
         DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
         {
+            ApplyListOrientation();
             if (CardList.SelectedIndex < 0 && ViewModel.Items.Count > 0) CardList.SelectedIndex = 0;
             FocusSelectedCard();
         });
@@ -267,6 +279,19 @@ public sealed partial class PanelWindow : Window
         ViewModel.SetBadgesVisible(false);
         AppWindow.Hide();
         _unloadTimer.Start();
+    }
+
+    /// <summary>
+    /// Clicking another app hides the panel even when the panel never got activated (the foreground lock
+    /// can refuse it), in which case no Deactivated event would ever come.
+    /// </summary>
+    public void OnForegroundChanged(nint hwnd)
+    {
+        if (!_shown || _hiding || _resizing || SuppressAutoHide || hwnd == 0) return;
+        if (ProcessInfo.IsOwnWindow(hwnd)) return;
+        // Right after opening, focus may still settle (e.g. the Start menu closing after a launch).
+        if (_sinceShow.ElapsedMilliseconds < 500) return;
+        HidePanel();
     }
 
     private void OnActivated(object sender, WindowActivatedEventArgs args)
@@ -349,12 +374,44 @@ public sealed partial class PanelWindow : Window
     // ---------- edge layout ----------
 
     /// <summary>Lays the panel out for its screen edge: card direction, top bar and resize grip.</summary>
+    private Thickness CardMargin => IsVertical ? new Thickness(0, 5, 0, 5) : new Thickness(7, 0, 7, 0);
+
     private void ApplyEdge()
     {
         var edge = _host.Settings.PanelEdge;
         if (_edgeApplied && edge == _edge) return;
         _edge = edge;
         _edgeApplied = true;
+        try
+        {
+            ApplyEdgeLayout();
+        }
+        catch (Exception e)
+        {
+            // A layout problem must never keep the panel from opening.
+            Log.Error("Applying panel edge " + edge, e);
+        }
+    }
+
+    /// <summary>
+    /// Turns the existing card panel instead of swapping ItemsPanel templates: templates fetched from a
+    /// resource dictionary failed to cast in the Native AOT build, which broke the first open.
+    /// </summary>
+    private void ApplyListOrientation()
+    {
+        if (CardList.ItemsPanelRoot is ItemsStackPanel panel)
+        {
+            var orientation = IsVertical ? Orientation.Vertical : Orientation.Horizontal;
+            if (panel.Orientation != orientation) panel.Orientation = orientation;
+        }
+        for (var i = 0; i < ViewModel.Items.Count; i++)
+        {
+            if (CardList.ContainerFromIndex(i) is ListViewItem container) container.Margin = CardMargin;
+        }
+    }
+
+    private void ApplyEdgeLayout()
+    {
         var vertical = IsVertical;
 
         // Top bar: one row, or (side edges) search + buttons above the tabs.
@@ -367,8 +424,7 @@ public sealed partial class PanelWindow : Window
         Grid.SetColumnSpan(TabsScroller, vertical ? 3 : 1);
 
         // Cards
-        CardList.ItemsPanel = (ItemsPanelTemplate)Root.Resources[vertical ? "VerticalCardsPanel" : "HorizontalCardsPanel"];
-        CardList.ItemContainerStyle = (Style)Application.Current.Resources[vertical ? "VerticalCardContainerStyle" : "CardContainerStyle"];
+        ApplyListOrientation(); // again once the list has loaded (CardList.Loaded) on the first open
         CardList.Padding = vertical ? new Thickness(CardMetrics.VerticalListPadding / 2, 2, CardMetrics.VerticalListPadding / 2, 12) : new Thickness(11, 8, 11, 14);
         ScrollViewer.SetHorizontalScrollMode(CardList, vertical ? ScrollMode.Disabled : ScrollMode.Enabled);
         ScrollViewer.SetHorizontalScrollBarVisibility(CardList, vertical ? ScrollBarVisibility.Disabled : ScrollBarVisibility.Hidden);

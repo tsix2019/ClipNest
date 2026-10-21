@@ -193,12 +193,6 @@
                                  To="0" Duration="0:0:0.12" />
             </Storyboard>
 
-            <ItemsPanelTemplate x:Key="HorizontalCardsPanel">
-                <ItemsStackPanel Orientation="Horizontal" />
-            </ItemsPanelTemplate>
-            <ItemsPanelTemplate x:Key="VerticalCardsPanel">
-                <ItemsStackPanel Orientation="Vertical" />
-            </ItemsPanelTemplate>
         </Grid.Resources>
 
         <Grid.RowDefinitions>
@@ -311,13 +305,18 @@
                   DragItemsStarting="CardList_DragItemsStarting"
                   DoubleTapped="CardList_DoubleTapped"
                   RightTapped="CardList_RightTapped"
-                  ItemsPanel="{StaticResource HorizontalCardsPanel}"
                   Padding="11,8,11,14"
                   ScrollViewer.HorizontalScrollMode="Enabled"
                   ScrollViewer.HorizontalScrollBarVisibility="Hidden"
                   ScrollViewer.VerticalScrollMode="Disabled"
                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
                   ScrollViewer.IsHorizontalRailEnabled="True">
+            <!-- PanelWindow.ApplyListOrientation turns it vertical for the left/right edges. -->
+            <ListView.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <ItemsStackPanel Orientation="Horizontal" />
+                </ItemsPanelTemplate>
+            </ListView.ItemsPanel>
             <ListView.ItemContainerTransitions>
                 <TransitionCollection>
                     <AddDeleteThemeTransition />

@@ -124,6 +124,19 @@ public sealed partial class PanelWindow : Window
         ApplyCaptureSetting();
         // The acrylic backdrop is attached on first show: set on a never-shown window, DWM draws it as a
         // blank topmost rectangle at the default window position until the panel is opened.
+
+        // Start at the panel's real place, not the default window rect, and refuse to be shown by
+        // anything but ShowPanel: another program (or the shell) calling ShowWindow on the hidden panel
+        // left a blank, topmost, borderless window that Esc and clicking away could not close.
+        PositionOnCursorMonitor();
+        AppWindow.Changed += OnAppWindowChanged;
+    }
+
+    private void OnAppWindowChanged(AppWindow sender, AppWindowChangedEventArgs args)
+    {
+        if (!args.DidVisibilityChange || !sender.IsVisible || _shown) return;
+        Log.Warn("Panel was made visible outside ShowPanel; hiding it");
+        sender.Hide();
     }
 
     public void ApplyCaptureSetting() => WindowStyler.SetCaptureExcluded(_hwnd, _host.Settings.HideFromCapture);
